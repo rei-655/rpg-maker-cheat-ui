@@ -27,7 +27,7 @@ $ErrorActionPreference = 'Stop'
 try { [Console]::OutputEncoding = [Text.Encoding]::UTF8 } catch {}
 
 $PLUGIN_NAME  = 'CheatUILoader'
-$ASSET_DIR    = 'cheat'
+$ASSET_DIR    = 'cheat-ui'
 $BACKUP_STAMP = Get-Date -Format 'yyyyMMddHHmmss'
 $PROJECT_ROOT = Split-Path -Parent $PSScriptRoot
 
@@ -201,15 +201,54 @@ function Disable-BrokenLaunchers ([string]$text, [string]$contentRoot) {
     return @{ Text = ($lines -join "`n"); Disabled = $disabled }
 }
 
+# plugins.js の検証。ConvertFrom-Json は使わない。PowerShell 5.1 のそれは
+# 空のプロパティ名を拒むが、ツクールのプラグイン（MOG 系など）は実際に
+# "" というパラメータ名を持つことがあり、正当なファイルを弾いてしまう。
+#
+# こちらは既存の項目を書き換えないので、構造だけ見れば足りる。
 function Assert-PluginsJs ([string]$text) {
     $open  = $text.IndexOf('[')
     $close = $text.LastIndexOf(']')
     if ($open -lt 0 -or $close -lt $open) { throw 'no $plugins array found' }
 
-    $array = $text.Substring($open, $close - $open + 1)
-    $null = ConvertFrom-Json $array
-    return ([regex]::Matches($array, '"name"\s*:')).Count
+    $array = $text.Substring($open + 1, $close - $open - 1)
+    $depth = 0
+    $count = 0
+    $inString = $false
+    $escaped = $false
+    $lastMeaningful = ''
+
+    foreach ($ch in $array.ToCharArray()) {
+        if ($inString) {
+            if ($escaped) { $escaped = $false }
+            elseif ($ch -eq [char]92) { $escaped = $true }
+            elseif ($ch -eq '"') { $inString = $false }
+            continue
+        }
+
+        switch ($ch) {
+            '"' { $inString = $true }
+            '{' { $depth++ }
+            '}' {
+                $depth--
+                if ($depth -lt 0) { throw 'unbalanced braces in $plugins' }
+                if ($depth -eq 0) { $count++ }
+            }
+        }
+
+        if ($ch -notmatch '\s') {
+            if ($ch -eq ',' -and $lastMeaningful -eq ',') { throw 'empty entry in $plugins' }
+            $lastMeaningful = $ch
+        }
+    }
+
+    if ($inString) { throw 'unterminated string in $plugins' }
+    if ($depth -ne 0) { throw 'unbalanced braces in $plugins' }
+    if ($lastMeaningful -eq ',') { throw 'trailing comma in $plugins' }
+
+    return $count
 }
+
 
 # 対象の決定
 Write-Info ''
@@ -322,9 +361,17 @@ if (-not (Test-Path -LiteralPath $cheatSource -PathType Container)) {
     exit 1
 }
 
+# 自分が置いたフォルダ以外は消さずに退避する。ゲームが同名のフォルダを
+# 持っていることがあり、消してしまうと戻せない。
 if (Test-Path -LiteralPath $cheatTarget) {
-    Write-Step 'replace' $cheatTarget
-    if (-not $DryRun) { Remove-Item -LiteralPath $cheatTarget -Recurse -Force }
+    if (Test-Path -LiteralPath (Join-Path $cheatTarget 'cheat-ui.js') -PathType Leaf) {
+        Write-Step 'replace' $cheatTarget
+        if (-not $DryRun) { Remove-Item -LiteralPath $cheatTarget -Recurse -Force }
+    } else {
+        $moved = "$cheatTarget.cheatui-backup-$BACKUP_STAMP"
+        Write-Step 'move' "$cheatTarget  -> $(Split-Path -Leaf $moved)"
+        if (-not $DryRun) { Move-Item -LiteralPath $cheatTarget -Destination $moved -Force }
+    }
 } else {
     Write-Step 'create' $cheatTarget
 }

@@ -9,14 +9,14 @@
  * js/main.js には一切触れない。
  */
 import {
-    cpSync, existsSync, mkdirSync, readFileSync, writeFileSync, copyFileSync, rmSync
+    cpSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync, copyFileSync, rmSync
 } from 'node:fs'
 import {fileURLToPath} from 'node:url'
 import {dirname, join, resolve} from 'node:path'
 
 const PROJECT_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const PLUGIN_NAME = 'CheatUILoader'
-const ASSET_DIR = 'cheat'
+const ASSET_DIR = 'cheat-ui'
 const STAMP = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14)
 
 const args = process.argv.slice(2)
@@ -99,10 +99,19 @@ function backup (path) {
 // アセット
 const cheatTarget = join(layout.contentRoot, ASSET_DIR)
 
+// 自分が置いたフォルダ以外は消さずに退避する。
 if (existsSync(cheatTarget)) {
-    actions.push(`replace  ${cheatTarget}`)
-    if (!dryRun) {
-        rmSync(cheatTarget, {recursive: true, force: true})
+    if (existsSync(join(cheatTarget, 'cheat-ui.js'))) {
+        actions.push(`replace  ${cheatTarget}`)
+        if (!dryRun) {
+            rmSync(cheatTarget, {recursive: true, force: true})
+        }
+    } else {
+        const moved = `${cheatTarget}.cheatui-backup-${STAMP}`
+        actions.push(`move     ${cheatTarget} -> ${moved.split(/[\/]/).pop()}`)
+        if (!dryRun) {
+            renameSync(cheatTarget, moved)
+        }
     }
 } else {
     actions.push(`create   ${cheatTarget}`)

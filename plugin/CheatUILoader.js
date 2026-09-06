@@ -7,7 +7,7 @@
  * @text アセットフォルダ
  * @desc index.html と同じ階層にある cheat-ui.js / cheat-ui.css の置き場。
  * @type string
- * @default cheat
+ * @default cheat-ui
  *
  * @param defaultLocale
  * @text 既定の言語
@@ -29,7 +29,7 @@
   'use strict'
 
   var params = PluginManager.parameters('CheatUILoader')
-  var dir = String(params.assetDir || 'cheat').replace(/\/+$/, '')
+  var dir = String(params.assetDir || 'cheat-ui').replace(/\/+$/, '')
 
   window.__CHEAT_UI_LOCALE__ = String(params.defaultLocale || 'auto')
 

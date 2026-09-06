@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process'
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -88,7 +88,7 @@ describe('installer', () => {
 
     expect(list).toHaveLength(3)
     expect(list[2].name).toBe('CheatUILoader')
-    expect(list[2].parameters).toEqual({ assetDir: 'cheat', defaultLocale: 'auto' })
+    expect(list[2].parameters).toEqual({ assetDir: 'cheat-ui', defaultLocale: 'auto' })
     expect(readPlugins(game)).toContain(OTHER)
     expect(readPlugins(game).startsWith('//=====')).toBe(true)
   })
@@ -99,8 +99,8 @@ describe('installer', () => {
 
     runNode([game.root])
 
-    expect(existsSync(join(game.content, 'cheat', 'cheat-ui.js'))).toBe(true)
-    expect(existsSync(join(game.content, 'cheat', 'cheat-ui.css'))).toBe(true)
+    expect(existsSync(join(game.content, 'cheat-ui', 'cheat-ui.js'))).toBe(true)
+    expect(existsSync(join(game.content, 'cheat-ui', 'cheat-ui.css'))).toBe(true)
     expect(existsSync(join(game.content, 'js', 'plugins', 'CheatUILoader.js'))).toBe(true)
     expect(readFileSync(join(game.content, 'js', 'main.js'), 'utf-8')).toBe(before)
   })
@@ -147,7 +147,7 @@ describe('installer', () => {
     const ours = entries(game).filter((entry) => entry.name === 'CheatUILoader')
 
     expect(ours).toHaveLength(1)
-    expect(ours[0].parameters).toEqual({ assetDir: 'cheat', defaultLocale: 'auto' })
+    expect(ours[0].parameters).toEqual({ assetDir: 'cheat-ui', defaultLocale: 'auto' })
   })
 
   it('writes nothing on a dry run', () => {
@@ -157,24 +157,55 @@ describe('installer', () => {
     runNode([game.root, '--dry-run'])
 
     expect(readPlugins(game)).toBe(before)
-    expect(existsSync(join(game.content, 'cheat'))).toBe(false)
+    expect(existsSync(join(game.content, 'cheat-ui'))).toBe(false)
+  })
+
+  it('never destroys a folder the game already owns', () => {
+    const game = makeGame()
+    const theirs = join(game.content, 'cheat-ui')
+
+    mkdirSync(theirs, { recursive: true })
+    writeFileSync(join(theirs, 'their-file.js'), '// the game owns this', 'utf-8')
+
+    runNode([game.root])
+
+    const kept = readdirSync(game.content).find((entry) => entry.startsWith('cheat-ui.cheatui-backup-'))
+
+    expect(kept, 'the original folder is moved aside, not deleted').toBeDefined()
+    expect(existsSync(join(game.content, kept!, 'their-file.js'))).toBe(true)
+    expect(existsSync(join(theirs, 'cheat-ui.js'))).toBe(true)
   })
 
   it('detects the MV layout under www/', () => {
     const game = makeGame({ engine: 'MV' })
 
     expect(runNode([game.root])).toMatch(/engine\s+MV/)
-    expect(existsSync(join(game.root, 'www', 'cheat', 'cheat-ui.js'))).toBe(true)
+    expect(existsSync(join(game.root, 'www', 'cheat-ui', 'cheat-ui.js'))).toBe(true)
   })
 })
 
 describe.runIf(hasPowerShell)('powershell installer', () => {
+  it('accepts a plugin parameter with an empty name, as MOG plugins ship', () => {
+    // PowerShell 5.1 の ConvertFrom-Json はこれを拒む。実在のゲームで詰まった。
+    const game = makeGame()
+    const withEmptyKey = readPlugins(game).replace(
+      OTHER,
+      '{"name":"MOG_TitlePictureCom","status":true,"description":"","parameters":{"":"1","x":"2"}}'
+    )
+
+    writeFileSync(game.pluginsJs, withEmptyKey, 'utf-8')
+    runPs(['-GamePath', game.root])
+
+    expect(entries(game).map((entry) => entry.name)).toContain('CheatUILoader')
+    expect(readPlugins(game)).toContain('"parameters":{"":"1","x":"2"}')
+  })
+
   it('accepts any path inside the game', () => {
     const game = makeGame()
     runPs(['-GamePath', join(game.root, 'Game.exe')])
 
     expect(entries(game)).toHaveLength(3)
-    expect(existsSync(join(game.content, 'cheat', 'cheat-ui.js'))).toBe(true)
+    expect(existsSync(join(game.content, 'cheat-ui', 'cheat-ui.js'))).toBe(true)
   })
 
   it('preserves the BOM it found', () => {
@@ -200,7 +231,7 @@ describe.runIf(hasPowerShell)('powershell installer', () => {
     runPs(['-GamePath', game.root, '-Uninstall'])
 
     expect(entries(game)).toHaveLength(2)
-    expect(existsSync(join(game.content, 'cheat'))).toBe(false)
+    expect(existsSync(join(game.content, 'cheat-ui'))).toBe(false)
     expect(existsSync(join(game.content, 'js', 'plugins', 'CheatUILoader.js'))).toBe(false)
     expect(readPlugins(game)).toContain(OTHER)
   })
