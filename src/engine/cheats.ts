@@ -60,8 +60,13 @@ export const battle = {
     members.forEach((member) => member.setHp(hp))
   },
 
-  fillTpAll(members: Battler[]): void {
-    members.forEach((member) => member.setTp(member.maxTp()))
+  /** HP・MP・TP のどれか 1 つだけを満タンにする。 */
+  fillAll(members: Battler[], field: 'hp' | 'mp' | 'tp'): void {
+    for (const member of members) {
+      if (field === 'hp') member.setHp(member.mhp)
+      else if (field === 'mp') member.setMp(member.mmp)
+      else member.setTp(member.maxTp())
+    }
   },
 
   recoverAll(members: Battler[]): void {

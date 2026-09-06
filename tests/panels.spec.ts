@@ -249,8 +249,34 @@ describe('HomePanel', () => {
     const panel = await open(HomePanel)
 
     expect(panel.findAll('.big').length).toBeGreaterThanOrEqual(4)
-    expect(panel.text()).toContain(t('home.maxGold'))
     expect(panel.findAll('.hub__card')).toHaveLength(7)
+  })
+
+  it('lets you set an exact amount of gold, not only the maximum', async () => {
+    const panel = await open(HomePanel)
+    const field = panel.find('.section__body input')
+
+    await field.setValue('4321')
+    await field.trigger('keydown', { key: 'Enter' })
+
+    expect(game().$gameParty._gold).toBe(4321)
+  })
+
+  it('heals HP, MP and TP separately', async () => {
+    const panel = await open(HomePanel)
+    const members = (globalThis as unknown as { $gameParty: { members(): { hp: number; mp: number }[] } }).$gameParty
+
+    members.members().forEach((member) => {
+      member.hp = 1
+      member.mp = 1
+    })
+
+    await clickText(panel, t('home.fillHp'))
+    expect(members.members()[0].hp).toBe(300)
+    expect(members.members()[0].mp).toBe(1)
+
+    await clickText(panel, t('home.fillMp'))
+    expect(members.members()[0].mp).toBe(40)
   })
 
   it('has no speed controls', async () => {
