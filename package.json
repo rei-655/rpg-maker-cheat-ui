@@ -31,7 +31,8 @@
     "typecheck": "vue-tsc --noEmit",
     "lint": "eslint .",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "package": "npm run build && node tools/package.mjs"
   },
   "dependencies": {
     "pinia": "^2.3.1",
