@@ -19,7 +19,7 @@ const columns = computed<Column[]>(() => [
   { key: 'actions', label: '', width: 90, sortable: false }
 ])
 
-const view = useSession().view('unstuck', { perPage: 25, widths: { kind: 96, id: 64, name: 200 } })
+const view = useSession().view('unstuck', { widths: { kind: 96, id: 64, name: 200 } })
 
 const recording = ref(watcher.recording)
 const changes = ref<Change[]>(watcher.recording ? watcher.diff() : [])

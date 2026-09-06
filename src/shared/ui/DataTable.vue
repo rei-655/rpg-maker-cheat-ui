@@ -12,7 +12,7 @@ export interface Column {
   mono?: boolean
 }
 
-const PER_PAGE = [15, 25, 50, 100, 0]
+const PER_PAGE = [10, 15, 25, 50, 100, 0]
 const MIN_WIDTH = 44
 
 const {

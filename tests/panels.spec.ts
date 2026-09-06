@@ -68,6 +68,23 @@ describe('every panel renders', () => {
   }
 })
 
+describe('paging', () => {
+  it('defaults to 10 rows so a list fits on screen without scrolling', async () => {
+    const panel = await open(VariablesTable)
+    const options = panel.findAll('.pager option').map((option) => option.text())
+
+    expect(options[0]).toBe(t('common.rows', { count: 10 }))
+    expect((panel.find('.pager select').element as HTMLSelectElement).value).toBe('10')
+  })
+
+  it('puts the row count above the table, next to the filters', async () => {
+    const panel = await open(VariablesTable)
+    const html = panel.html()
+
+    expect(html.indexOf('pager')).toBeLessThan(html.indexOf('table-wrap'))
+  })
+})
+
 describe('menu', () => {
   it('is organised by what the player wants to do, not by engine tables', () => {
     expect(PANELS.map((panel) => panel.id)).toEqual([

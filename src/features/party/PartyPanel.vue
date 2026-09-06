@@ -53,8 +53,8 @@ const stateColumns = computed<Column[]>(() => [
 ])
 
 const session = useSession()
-const view = session.view('party', { sort: { key: 'name', desc: false }, perPage: 25, widths: { name: 150 } })
-const stateView = session.view('party.states', { perPage: 15, widths: { id: 64 } })
+const view = session.view('party', { sort: { key: 'name', desc: false }, widths: { name: 150 } })
+const stateView = session.view('party.states', { widths: { id: 64 } })
 
 const rows = ref<MemberRow[]>([])
 const selectedId = ref<number | null>(null)

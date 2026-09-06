@@ -27,7 +27,7 @@ function defaultView(): TableView {
     search: '',
     sort: { key: 'id', desc: false },
     page: 1,
-    perPage: 25,
+    perPage: 10,
     widths: {},
     flags: {},
     tab: ''

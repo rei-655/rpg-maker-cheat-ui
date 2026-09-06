@@ -22,7 +22,7 @@ const columns = computed<Column[]>(() => [
   { key: 'value', label: t('col.value'), width: 96 }
 ])
 
-const view = useSession().view('data.switches', { perPage: 25, widths: { id: 64, name: 320 } })
+const view = useSession().view('data.switches', { widths: { id: 64, name: 320 } })
 const rows = ref<Row[]>([])
 
 const shown = computed(() => {
