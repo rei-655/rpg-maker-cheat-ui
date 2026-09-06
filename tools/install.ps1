@@ -92,7 +92,7 @@ function Select-GameWithDialog {
     }
 
     $dialog = New-Object System.Windows.Forms.OpenFileDialog
-    $dialog.Title  = 'game folder: pick Game.exe or index.html'
+    $dialog.Title  = 'Pick Game.exe or index.html inside the game folder'
     $dialog.Filter = 'RPG Maker (Game.exe;nw.exe;index.html)|Game.exe;nw.exe;index.html|All files (*.*)|*.*'
     $dialog.CheckFileExists = $true
 
@@ -195,7 +195,7 @@ function Disable-BrokenLaunchers ([string]$text, [string]$contentRoot) {
         if (Test-Path -LiteralPath $folder -PathType Container) { continue }
 
         $lines[$i] = $line -replace '"status"\s*:\s*true', '"status":false'
-        $disabled += "$name  (-> $target 없음)"
+        $disabled += "$name  (-> $target is missing)"
     }
 
     return @{ Text = ($lines -join "`n"); Disabled = $disabled }
@@ -213,38 +213,38 @@ function Assert-PluginsJs ([string]$text) {
 
 # 対象の決定
 Write-Info ''
-Write-Info 'RPG Maker MV / MZ 치트 UI 설치'
-Write-Info '------------------------------'
+Write-Info 'RPG Maker MV / MZ cheat UI'
+Write-Info '--------------------------'
 
 $layout = $null
 
 if ($GamePath) {
     $layout = Resolve-GameLayout $GamePath
     if (-not $layout) {
-        Write-Fail "RPG Maker 게임이 아니야: $GamePath"
-        Write-Info 'index.html 과 js/rmmz_core.js (MZ) 또는 js/rpg_core.js (MV) 가 있어야 해.'
+        Write-Fail "Not an RPG Maker game: $GamePath"
+        Write-Info 'Expected index.html plus js/rmmz_core.js (MZ) or js/rpg_core.js (MV).'
         exit 1
     }
 } else {
     $layout = Find-NearbyGame
     if ($layout) {
-        Write-Info "게임을 찾았어: $($layout.ContentRoot)"
+        Write-Info "Found a game at $($layout.ContentRoot)"
     } elseif ($NoPrompt) {
-        Write-Fail '게임 폴더를 찾지 못했어. -GamePath 로 지정해줘.'
+        Write-Fail 'No game found. Pass one with -GamePath.'
         exit 1
     } else {
-        Write-Info '게임 폴더를 찾지 못했어. 선택 창을 열게.'
+        Write-Info 'No game found nearby. Opening a file picker.'
         $picked = Select-GameWithDialog
 
         if (-not $picked) {
-            Write-Warn '취소했어.'
+            Write-Warn 'Cancelled.'
             exit 1
         }
 
         $layout = Resolve-GameLayout $picked
         if (-not $layout) {
-            Write-Fail "RPG Maker 게임이 아니야: $picked"
-            Write-Info 'Game.exe 나 index.html 이 있는 게임 폴더에서 골라줘.'
+            Write-Fail "Not an RPG Maker game: $picked"
+            Write-Info 'Pick Game.exe or index.html inside the game folder.'
             exit 1
         }
     }
@@ -257,13 +257,13 @@ $pluginTarget = Join-Path $pluginsDir "$PLUGIN_NAME.js"
 $pluginsJs    = Join-Path $contentRoot 'js\plugins.js'
 
 Write-Info ''
-Write-Info "  엔진     $($layout.Engine)"
-Write-Info "  경로     $contentRoot"
-if ($DryRun) { Write-Warn '  모드     미리보기 (아무것도 쓰지 않음)' }
+Write-Info "  engine   $($layout.Engine)"
+Write-Info "  folder   $contentRoot"
+if ($DryRun) { Write-Warn '  mode     dry run (nothing is written)' }
 Write-Info ''
 
 if (-not (Test-Path -LiteralPath $pluginsJs -PathType Leaf)) {
-    Write-Fail "js/plugins.js 가 없어서 플러그인을 등록할 수 없어: $pluginsJs"
+    Write-Fail "Cannot register the plugin: $pluginsJs is missing"
     exit 1
 }
 
@@ -299,17 +299,17 @@ if ($Uninstall) {
     if ($registered) {
         $saved = Backup-File $pluginsJs
 
-        Write-Step 'unlink' "$pluginsJs  (백업: $saved)"
+        Write-Step 'unlink' "$pluginsJs  (backup: $saved)"
         Write-TextFile $pluginsJs $planned $pluginsFile.HasBom
     }
 
     Write-Info ''
-    Write-Info "  플러그인 $before 개 -> $after 개"
+    Write-Info "  plugins  $before -> $after"
     Write-Info ''
     if ($DryRun) {
-        Write-Good '미리보기 끝 — 아무것도 지우지 않았어.'
+        Write-Good 'Dry run finished. Nothing was removed.'
     } else {
-        Write-Good '제거 완료. 백업 파일(.cheatui-backup-*)은 그대로 뒀어.'
+        Write-Good 'Removed. Backup files (.cheatui-backup-*) were left in place.'
     }
     exit 0
 }
@@ -317,8 +317,8 @@ if ($Uninstall) {
 # 導入
 $cheatSource = Join-Path $PROJECT_ROOT 'dist'
 if (-not (Test-Path -LiteralPath $cheatSource -PathType Container)) {
-    Write-Fail "빌드 결과가 없어: $cheatSource"
-    Write-Info 'npm install && npm run build 를 먼저 실행해줘.'
+    Write-Fail "No build output at $cheatSource"
+    Write-Info 'Run npm install && npm run build first.'
     exit 1
 }
 
@@ -341,12 +341,12 @@ if (-not $DryRun) {
 }
 
 if ($planned -eq $pluginsFile.Text) {
-    Write-Step 'skip' "$pluginsJs (변경 없음)"
+    Write-Step 'skip' "$pluginsJs (no change)"
 } else {
     $saved = Backup-File $pluginsJs
 
     $verb = if ($registered) { 'update' } else { 'register' }
-    Write-Step $verb "$pluginsJs  (백업: $saved)"
+    Write-Step $verb "$pluginsJs  (backup: $saved)"
 
     # 行き先の無いチートランチャーが同梱されていることがある。
     foreach ($name in $launcher.Disabled) {
@@ -357,13 +357,13 @@ if ($planned -eq $pluginsFile.Text) {
 }
 
 Write-Info ''
-Write-Info "  플러그인 $before 개 -> $after 개 (기존 항목은 건드리지 않음)"
-Write-Info '  js/main.js 는 그대로'
+Write-Info "  plugins  $before -> $after (existing entries untouched)"
+Write-Info '  js/main.js left alone'
 Write-Info ''
 
 if ($DryRun) {
-    Write-Good '미리보기 끝 — 아무것도 쓰지 않았어.'
+    Write-Good 'Dry run finished. Nothing was written.'
 } else {
-    Write-Good '설치 완료. 게임을 켜고 Ctrl+C 를 눌러.'
+    Write-Good 'Done. Start the game and press Ctrl+C.'
 }
-if ($pluginBackup) { Write-Info "이전 플러그인은 $pluginBackup 으로 저장했어." }
+if ($pluginBackup) { Write-Info "The previous plugin was saved as $pluginBackup" }

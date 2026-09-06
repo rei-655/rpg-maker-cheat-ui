@@ -6,3 +6,4 @@ Thumbs.db
 .vscode/
 .idea/
 *.cheatui-backup-*
+release/
