@@ -136,6 +136,37 @@ function compare(a: unknown, b: unknown): number {
 
 <template>
   <div>
+    <div v-if="rows.length > 0" class="pager">
+      <span class="pager__pos">{{ range }}</span>
+      <select v-model.number="perPage" class="input" @change="page = 1">
+        <option v-for="option in PER_PAGE" :key="option" :value="option">
+          {{ option === 0 ? t('common.allRows') : t('common.rows', { count: option }) }}
+        </option>
+      </select>
+      <button class="btn btn--sm btn--icon" :disabled="current <= 1" :title="t('common.firstPage')" @click="goTo(1)">
+        <AppIcon name="first" :size="13" />
+      </button>
+      <button class="btn btn--sm btn--icon" :disabled="current <= 1" :title="t('common.prevPage')" @click="goTo(current - 1)">
+        <AppIcon name="left" :size="13" />
+      </button>
+      <button
+        class="btn btn--sm btn--icon"
+        :disabled="current >= pageCount"
+        :title="t('common.nextPage')"
+        @click="goTo(current + 1)"
+      >
+        <AppIcon name="right" :size="13" />
+      </button>
+      <button
+        class="btn btn--sm btn--icon"
+        :disabled="current >= pageCount"
+        :title="t('common.lastPage')"
+        @click="goTo(pageCount)"
+      >
+        <AppIcon name="last" :size="13" />
+      </button>
+    </div>
+
     <div class="table-wrap">
       <table class="table">
         <colgroup>
@@ -183,37 +214,6 @@ function compare(a: unknown, b: unknown): number {
           </tr>
         </tbody>
       </table>
-    </div>
-
-    <div v-if="rows.length > 0" class="pager">
-      <span class="pager__pos">{{ range }}</span>
-      <select v-model.number="perPage" class="input" @change="page = 1">
-        <option v-for="option in PER_PAGE" :key="option" :value="option">
-          {{ option === 0 ? t('common.allRows') : t('common.rows', { count: option }) }}
-        </option>
-      </select>
-      <button class="btn btn--sm btn--icon" :disabled="current <= 1" :title="t('common.firstPage')" @click="goTo(1)">
-        <AppIcon name="first" :size="13" />
-      </button>
-      <button class="btn btn--sm btn--icon" :disabled="current <= 1" :title="t('common.prevPage')" @click="goTo(current - 1)">
-        <AppIcon name="left" :size="13" />
-      </button>
-      <button
-        class="btn btn--sm btn--icon"
-        :disabled="current >= pageCount"
-        :title="t('common.nextPage')"
-        @click="goTo(current + 1)"
-      >
-        <AppIcon name="right" :size="13" />
-      </button>
-      <button
-        class="btn btn--sm btn--icon"
-        :disabled="current >= pageCount"
-        :title="t('common.lastPage')"
-        @click="goTo(pageCount)"
-      >
-        <AppIcon name="last" :size="13" />
-      </button>
     </div>
   </div>
 </template>
