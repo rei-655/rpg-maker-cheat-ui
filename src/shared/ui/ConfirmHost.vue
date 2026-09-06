@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { nextTick, ref, watch } from 'vue'
 import { useConfirm } from '@/shared/composables/useConfirm'
+import { t } from '@/i18n'
 
 const { request, answer } = useConfirm()
 const dialog = ref<HTMLElement | null>(null)
@@ -27,16 +28,16 @@ function onKeydown(event: KeyboardEvent): void {
 <template>
   <div v-if="request" class="overlay" @mousedown.self="answer(false)">
     <div ref="dialog" class="dialog" tabindex="-1" @keydown="onKeydown">
-      <div class="dialog__head">{{ request.title ?? '확인' }}</div>
+      <div class="dialog__head">{{ request.title ?? t('common.confirm') }}</div>
       <div class="dialog__body">{{ request.message }}</div>
       <div class="dialog__foot">
-        <button class="btn" @click="answer(false)">취소</button>
+        <button class="btn" @click="answer(false)">{{ t('common.cancel') }}</button>
         <button
           class="btn"
           :class="request.danger ? 'btn--danger' : 'btn--primary'"
           @click="answer(true)"
         >
-          {{ request.confirmText ?? '확인' }}
+          {{ request.confirmText ?? t('common.confirm') }}
         </button>
       </div>
     </div>

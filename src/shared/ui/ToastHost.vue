@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import AppIcon from './AppIcon.vue'
 import { useToasts, type ToastLevel } from '@/shared/composables/useToast'
+import { t } from '@/i18n'
 
 const { toasts, dismiss } = useToasts()
 
@@ -13,7 +14,7 @@ const icon = (level: ToastLevel) =>
     <div v-for="item in toasts" :key="item.id" class="toast" :class="`toast--${item.level}`">
       <AppIcon :name="icon(item.level)" :size="14" />
       <span class="toast__text">{{ item.text }}</span>
-      <button class="btn btn--sm btn--icon btn--ghost" title="닫기" @click="dismiss(item.id)">
+      <button class="btn btn--sm btn--icon btn--ghost" :title="t('common.close')" @click="dismiss(item.id)">
         <AppIcon name="close" :size="12" />
       </button>
     </div>

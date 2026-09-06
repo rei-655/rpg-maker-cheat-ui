@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import AppIcon from './AppIcon.vue'
+import { t } from '@/i18n'
 
 const {
-  placeholder = '검색',
+  placeholder = '',
   shown = -1,
   total = -1,
   autofocus = false
@@ -44,9 +45,9 @@ function clear(): void {
 <template>
   <div class="search">
     <AppIcon name="search" :size="14" />
-    <input ref="input" v-model="model" type="text" :placeholder="placeholder" @keydown="onKeydown" />
+    <input ref="input" v-model="model" type="text" :placeholder="placeholder || t('common.search')" @keydown="onKeydown" />
     <span v-if="count" class="search__count">{{ count }}</span>
-    <button v-if="model" class="btn btn--sm btn--icon btn--ghost" title="지우기 (Esc)" @click="clear">
+    <button v-if="model" class="btn btn--sm btn--icon btn--ghost" :title="t('common.clearInput')" @click="clear">
       <AppIcon name="close" :size="13" />
     </button>
   </div>

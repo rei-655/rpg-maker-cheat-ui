@@ -17,8 +17,8 @@ const COMPARE = /^(>=|<=|!=|==|=|>|<)\s*(-?\d+(?:\.\d+)?)$/
 const RANGE = /^(-?\d+(?:\.\d+)?)\.\.(-?\d+(?:\.\d+)?)$/
 const NUMBER = /^-?\d+(?:\.\d+)?$/
 
-const TRUTHY = ['on', 'true', 'y', '켜짐']
-const FALSY = ['off', 'false', 'n', '꺼짐']
+const TRUTHY = ['on', 'true', 'y', 'オン', '켜짐']
+const FALSY = ['off', 'false', 'n', 'オフ', '꺼짐']
 
 /**
  * `quest` 名前 / `#12` ID / `500` ID または値 / `>1000` `100..200` 値 /

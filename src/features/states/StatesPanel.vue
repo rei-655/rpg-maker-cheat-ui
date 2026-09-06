@@ -8,6 +8,9 @@ import type { Battler, DataState } from '@/engine/types'
 import { matches, parseQuery } from '@/shared/lib/query'
 import { toast } from '@/shared/composables/useToast'
 import { useSession } from '@/stores/session'
+import { t } from '@/i18n'
+
+type Side = 'party' | 'enemy'
 
 interface Buff {
   paramId: number
@@ -16,30 +19,30 @@ interface Buff {
 
 interface MemberView {
   key: string
-  side: '아군' | '적'
+  side: Side
   name: string
   states: DataState[]
   buffs: Buff[]
   member: Battler
 }
 
-const columns: Column[] = [
-  { key: 'id', label: 'ID', width: 64, align: 'right' },
-  { key: 'name', label: '상태' },
+const columns = computed<Column[]>(() => [
+  { key: 'id', label: t('col.id'), width: 64, align: 'right' },
+  { key: 'name', label: t('col.state') },
   { key: 'actions', label: '', width: 80, sortable: false }
-]
+])
 
 const view = useSession().view('states', { perPage: 15, widths: { id: 64 } })
 const members = ref<MemberView[]>([])
 const states = ref<DataState[]>([])
 const targetKey = ref('party')
 
-const party = computed(() => members.value.filter((m) => m.side === '아군'))
-const enemies = computed(() => members.value.filter((m) => m.side === '적'))
+const party = computed(() => members.value.filter((m) => m.side === 'party'))
+const enemies = computed(() => members.value.filter((m) => m.side === 'enemy'))
 
 const targetOptions = computed(() => [
-  { key: 'party', label: `아군 전체 (${party.value.length})` },
-  { key: 'enemy', label: `적 전체 (${enemies.value.length})` },
+  { key: 'party', label: t('states.partyAll', { count: party.value.length }) },
+  { key: 'enemy', label: t('states.enemyAll', { count: enemies.value.length }) },
   ...members.value.map((member) => ({ key: member.key, label: member.name }))
 ])
 
@@ -58,8 +61,8 @@ onMounted(refresh)
 
 function refresh(): void {
   members.value = [
-    ...partyMembers().map((member, index) => describe(member, `party-${index}`, '아군')),
-    ...troopMembers().map((member, index) => describe(member, `enemy-${index}`, '적'))
+    ...partyMembers().map((member, index) => describe(member, `party-${index}`, 'party')),
+    ...troopMembers().map((member, index) => describe(member, `enemy-${index}`, 'enemy'))
   ]
 
   states.value = has('$dataStates')
@@ -71,7 +74,7 @@ function refresh(): void {
   if (!targetOptions.value.some((option) => option.key === targetKey.value)) targetKey.value = 'party'
 }
 
-function describe(member: Battler, key: string, side: '아군' | '적'): MemberView {
+function describe(member: Battler, key: string, side: Side): MemberView {
   const names = paramNames()
   const buffs: Buff[] = []
 
@@ -93,7 +96,7 @@ function describe(member: Battler, key: string, side: '아군' | '적'): MemberV
 function apply(state: DataState): void {
   targets.value.forEach((target) => target.member.addState(state.id))
   refresh()
-  toast.success(`"${state.name}" 을 ${targets.value.length}명에게 부여했다`)
+  toast.success(t('states.appliedToast', { name: state.name, count: targets.value.length }))
 }
 
 function clearAll(kind: 'states' | 'buffs'): void {
@@ -101,7 +104,11 @@ function clearAll(kind: 'states' | 'buffs'): void {
     kind === 'states' ? target.member.clearStates() : target.member.removeAllBuffs()
   )
   refresh()
-  toast.success(`${targets.value.length}명의 ${kind === 'states' ? '상태' : '버프'}를 해제했다`)
+  toast.success(
+    t(kind === 'states' ? 'states.clearedStatesToast' : 'states.clearedBuffsToast', {
+      count: targets.value.length
+    })
+  )
 }
 
 function removeState(member: MemberView, id: number): void {
@@ -118,7 +125,7 @@ function removeBuff(member: MemberView, paramId: number): void {
 <template>
   <div class="content">
     <div class="strip">
-      <span class="chips__label">적용 대상</span>
+      <span class="chips__label">{{ t('states.target') }}</span>
       <div class="chips">
         <button
           v-for="option in targetOptions"
@@ -131,9 +138,9 @@ function removeBuff(member: MemberView, paramId: number): void {
         </button>
       </div>
       <span class="spacer" />
-      <button class="btn btn--sm" :disabled="targets.length === 0" @click="clearAll('states')">상태 해제</button>
-      <button class="btn btn--sm" :disabled="targets.length === 0" @click="clearAll('buffs')">버프 해제</button>
-      <button class="btn btn--sm btn--icon" title="다시 읽기" @click="refresh">
+      <button class="btn btn--sm" :disabled="targets.length === 0" @click="clearAll('states')">{{ t('states.clearStates') }}</button>
+      <button class="btn btn--sm" :disabled="targets.length === 0" @click="clearAll('buffs')">{{ t('states.clearBuffs') }}</button>
+      <button class="btn btn--sm btn--icon" :title="t('common.refresh')" @click="refresh">
         <AppIcon name="refresh" :size="13" />
       </button>
     </div>
@@ -141,29 +148,29 @@ function removeBuff(member: MemberView, paramId: number): void {
     <div class="content__scroll">
       <div class="section">
         <div class="section__head">
-          <span>현재 상태</span><span class="tab__count">{{ members.length }}</span>
+          <span>{{ t('states.current') }}</span><span class="tab__count">{{ members.length }}</span>
         </div>
         <div class="section__body">
-          <div v-if="members.length === 0" class="empty">전투 중이 아니거나 파티가 비어 있습니다.</div>
+          <div v-if="members.length === 0" class="empty">{{ t('states.noMembers') }}</div>
           <div v-else class="kv">
             <template v-for="member in members" :key="member.key">
               <span class="kv__k">
-                <span class="pill" :class="member.side === '아군' ? 'pill--accent' : 'pill--danger'">
-                  {{ member.side }}
+                <span class="pill" :class="member.side === 'party' ? 'pill--accent' : 'pill--danger'">
+                  {{ t(member.side === 'party' ? 'common.party' : 'common.enemy') }}
                 </span>
                 {{ member.name }}
               </span>
               <span class="row-wrap">
-                <span v-if="member.states.length === 0 && member.buffs.length === 0" class="faint">없음</span>
+                <span v-if="member.states.length === 0 && member.buffs.length === 0" class="faint">{{ t('common.none') }}</span>
                 <span v-for="state in member.states" :key="`s${state.id}`" class="pill pill--warn">
                   {{ state.name }}
-                  <button class="pill__x" title="해제" @click="removeState(member, state.id)">
+                  <button class="pill__x" :title="t('states.release')" @click="removeState(member, state.id)">
                     <AppIcon name="close" :size="10" />
                   </button>
                 </span>
                 <span v-for="buff in member.buffs" :key="`b${buff.paramId}`" class="pill pill--ok">
                   {{ buff.label }}
-                  <button class="pill__x" title="해제" @click="removeBuff(member, buff.paramId)">
+                  <button class="pill__x" :title="t('states.release')" @click="removeBuff(member, buff.paramId)">
                     <AppIcon name="close" :size="10" />
                   </button>
                 </span>
@@ -174,11 +181,11 @@ function removeBuff(member: MemberView, paramId: number): void {
       </div>
 
       <div class="section">
-        <div class="section__head">상태 부여</div>
+        <div class="section__head">{{ t('states.assign') }}</div>
         <div class="section__body">
           <SearchBox
             v-model="view.search"
-            placeholder="상태 이름 · #12"
+            :placeholder="t('states.searchPlaceholder')"
             :shown="shown.length"
             :total="states.length"
           />
@@ -191,13 +198,13 @@ function removeBuff(member: MemberView, paramId: number): void {
             style="margin-top: 8px"
             :columns="columns"
             :rows="shown"
-            empty-text="조건에 맞는 상태가 없습니다."
+            :empty-text="t('states.empty')"
           >
             <template #id="{ row }">
               <span class="cell-id">{{ row.id }}</span>
             </template>
             <template #actions="{ row }">
-              <button class="btn btn--sm" :disabled="targets.length === 0" @click="apply(row)">부여</button>
+              <button class="btn btn--sm" :disabled="targets.length === 0" @click="apply(row)">{{ t('states.apply') }}</button>
             </template>
           </DataTable>
         </div>

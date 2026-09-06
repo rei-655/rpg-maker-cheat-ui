@@ -1,6 +1,7 @@
 <script setup lang="ts" generic="T extends Record<string, any>">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import AppIcon from './AppIcon.vue'
+import { t } from '@/i18n'
 
 export interface Column {
   key: string
@@ -18,7 +19,7 @@ const {
   columns,
   rows,
   rowKey = 'id',
-  emptyText = '표시할 항목이 없습니다.'
+  emptyText = ''
 } = defineProps<{
   columns: Column[]
   rows: T[]
@@ -56,7 +57,7 @@ const visible = computed(() => {
 
 const range = computed(() => {
   const total = sorted.value.length
-  if (perPage.value === 0 || total === 0) return `${total}행`
+  if (perPage.value === 0 || total === 0) return t('common.rows', { count: total })
 
   const start = (current.value - 1) * perPage.value + 1
   return `${start}-${Math.min(start + perPage.value - 1, total)} / ${total}`
@@ -161,7 +162,7 @@ function compare(a: unknown, b: unknown): number {
               <span
                 v-if="index < columns.length - 1"
                 class="table__handle"
-                title="드래그하여 폭 조정 · 더블클릭으로 초기화"
+                :title="t('common.resizeHint')"
                 @click.stop
                 @mousedown.stop.prevent="startResize(column, $event)"
                 @dblclick.stop.prevent="resetWidth(column)"
@@ -178,7 +179,7 @@ function compare(a: unknown, b: unknown): number {
             </td>
           </tr>
           <tr v-if="visible.length === 0">
-            <td :colspan="columns.length"><div class="empty">{{ emptyText }}</div></td>
+            <td :colspan="columns.length"><div class="empty">{{ emptyText || t('common.emptyRows') }}</div></td>
           </tr>
         </tbody>
       </table>
@@ -188,19 +189,19 @@ function compare(a: unknown, b: unknown): number {
       <span class="pager__pos">{{ range }}</span>
       <select v-model.number="perPage" class="input" @change="page = 1">
         <option v-for="option in PER_PAGE" :key="option" :value="option">
-          {{ option === 0 ? '전체' : `${option}행` }}
+          {{ option === 0 ? t('common.allRows') : t('common.rowsOption', { count: option }) }}
         </option>
       </select>
-      <button class="btn btn--sm btn--icon" :disabled="current <= 1" title="첫 페이지" @click="goTo(1)">
+      <button class="btn btn--sm btn--icon" :disabled="current <= 1" :title="t('common.firstPage')" @click="goTo(1)">
         <AppIcon name="first" :size="13" />
       </button>
-      <button class="btn btn--sm btn--icon" :disabled="current <= 1" title="이전" @click="goTo(current - 1)">
+      <button class="btn btn--sm btn--icon" :disabled="current <= 1" :title="t('common.prevPage')" @click="goTo(current - 1)">
         <AppIcon name="left" :size="13" />
       </button>
       <button
         class="btn btn--sm btn--icon"
         :disabled="current >= pageCount"
-        title="다음"
+        :title="t('common.nextPage')"
         @click="goTo(current + 1)"
       >
         <AppIcon name="right" :size="13" />
@@ -208,7 +209,7 @@ function compare(a: unknown, b: unknown): number {
       <button
         class="btn btn--sm btn--icon"
         :disabled="current >= pageCount"
-        title="마지막 페이지"
+        :title="t('common.lastPage')"
         @click="goTo(pageCount)"
       >
         <AppIcon name="last" :size="13" />

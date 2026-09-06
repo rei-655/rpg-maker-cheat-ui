@@ -10,6 +10,7 @@ import { coerceLike } from '@/shared/lib/coerce'
 import { REFINEMENTS, ValueScan, type Refinement } from '@/shared/lib/scan'
 import { toast } from '@/shared/composables/useToast'
 import { useSession } from '@/stores/session'
+import { t } from '@/i18n'
 
 interface Row {
   id: number
@@ -17,11 +18,11 @@ interface Row {
   value: unknown
 }
 
-const columns: Column[] = [
-  { key: 'id', label: 'ID', width: 64, align: 'right' },
-  { key: 'name', label: '이름', width: 260 },
-  { key: 'value', label: '값', align: 'right' }
-]
+const columns = computed<Column[]>(() => [
+  { key: 'id', label: t('col.id'), width: 64, align: 'right' },
+  { key: 'name', label: t('col.name'), width: 260 },
+  { key: 'value', label: t('col.value'), align: 'right' }
+])
 
 const view = useSession().view('variables', { perPage: 25, widths: { id: 64, name: 260 } })
 const rows = ref<Row[]>([])
@@ -73,22 +74,22 @@ function startScan(): void {
   scanner.start(rows.value.map((row) => row.id))
   view.flags.scanOnly = true
   syncScan()
-  toast.info(`변수 ${scanner.count}개를 기록했다. 게임에서 값을 바꾼 뒤 조건을 눌러라.`)
+  toast.info(t('variables.snapshotToast', { count: scanner.count }))
 }
 
 function refine(kind: Refinement, needsOperand?: true): void {
   const value = needsOperand ? Number(operand.value) : null
 
   if (needsOperand && !Number.isFinite(value)) {
-    toast.warn('비교할 값을 숫자로 입력해줘')
+    toast.warn(t('variables.needNumber'))
     return
   }
 
   const remaining = scanner.refine(kind, value)
   refresh()
 
-  if (remaining === 0) toast.warn('남은 후보가 없다. 스냅샷부터 다시')
-  else toast.success(`후보 ${remaining}개`)
+  if (remaining === 0) toast.warn(t('variables.noCandidates'))
+  else toast.success(t('variables.candidateToast', { count: remaining }))
 }
 
 function stopScan(): void {
@@ -108,7 +109,7 @@ function syncScan(): void {
     <div class="toolbar">
       <SearchBox
         v-model="view.search"
-        placeholder="이름 · #12 · 500 · >1000 · 100..200"
+        :placeholder="t('variables.searchPlaceholder')"
         :shown="shown.length"
         :total="rows.length"
         autofocus
@@ -116,14 +117,14 @@ function syncScan(): void {
 
       <div class="chips">
         <button class="chip" :class="{ 'chip--active': view.flags.named }" @click="view.flags.named = !view.flags.named">
-          이름 있는 것만
+          {{ t('variables.namedOnly') }}
         </button>
         <button
           class="chip"
           :class="{ 'chip--active': view.flags.nonZero }"
           @click="view.flags.nonZero = !view.flags.nonZero"
         >
-          0 아님
+          {{ t('variables.nonZero') }}
         </button>
         <button
           v-if="scan.active"
@@ -131,20 +132,20 @@ function syncScan(): void {
           :class="{ 'chip--active': view.flags.scanOnly !== false }"
           @click="view.flags.scanOnly = view.flags.scanOnly === false"
         >
-          스캔 후보 {{ scan.count }}
+          {{ t('variables.scanCandidates', { count: scan.count }) }}
         </button>
       </div>
 
       <span class="spacer" />
-      <button class="btn btn--sm btn--icon" title="게임에서 다시 읽기" @click="refresh">
+      <button class="btn btn--sm btn--icon" :title="t('common.refreshGame')" @click="refresh">
         <AppIcon name="refresh" :size="13" />
       </button>
     </div>
 
     <div class="toolbar">
-      <span class="chips__label">값 찾기</span>
+      <span class="chips__label">{{ t('variables.findValue') }}</span>
       <button v-if="!scan.active" class="btn btn--primary" @click="startScan">
-        <AppIcon name="target" :size="13" />스냅샷
+        <AppIcon name="target" :size="13" />{{ t('variables.snapshot') }}
       </button>
       <template v-else>
         <button
@@ -154,14 +155,14 @@ function syncScan(): void {
           :disabled="item.operand && operand === ''"
           @click="refine(item.key, item.operand)"
         >
-          {{ item.label }}
+          {{ t(`scan.${item.key}`) }}
         </button>
-        <input v-model="operand" class="input input--num" style="width: 96px" placeholder="값" @keydown.stop />
-        <span class="hint">후보 {{ scan.count }} · {{ scan.passes }}회</span>
-        <button class="btn btn--sm" @click="stopScan">중지</button>
+        <input v-model="operand" class="input input--num" style="width: 96px" :placeholder="t('variables.operand')" @keydown.stop />
+        <span class="hint">{{ t('variables.candidates', { count: scan.count, passes: scan.passes }) }}</span>
+        <button class="btn btn--sm" @click="stopScan">{{ t('variables.stop') }}</button>
       </template>
       <span class="spacer" />
-      <span class="hint">게임을 조작한 뒤 조건을 눌러 후보를 좁힌다</span>
+      <span class="hint">{{ t('variables.scanHint') }}</span>
     </div>
 
     <div class="content__scroll">
@@ -172,13 +173,13 @@ function syncScan(): void {
         v-model:widths="view.widths"
         :columns="columns"
         :rows="shown"
-        empty-text="조건에 맞는 변수가 없습니다."
+        :empty-text="t('variables.empty')"
       >
         <template #id="{ row }">
           <span class="cell-id">{{ row.id }}</span>
         </template>
         <template #name="{ row }">
-          <span :class="{ faint: !row.name }">{{ row.name || '(이름 없음)' }}</span>
+          <span :class="{ faint: !row.name }">{{ row.name || t('common.unnamed') }}</span>
         </template>
         <template #value="{ row }">
           <ValueInput :value="row.value as number" @edit-start="pin(row.id)" @commit="commit(row, $event)" />

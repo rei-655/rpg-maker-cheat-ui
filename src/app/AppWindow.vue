@@ -6,6 +6,7 @@ import { formatCombo } from './keys'
 import { useSession } from '@/stores/session'
 import { useShortcuts } from '@/stores/shortcuts'
 import { useDraggable } from '@/shared/composables/useDraggable'
+import { t } from '@/i18n'
 
 const session = useSession()
 const shortcuts = useShortcuts()
@@ -15,7 +16,7 @@ const geometry = computed(() => session.geometry ?? session.centeredGeometry())
 
 const closeHint = computed(() => {
   const combo = shortcuts.binding('toggleWindow').combo
-  return combo ? `${formatCombo(combo)} 닫기` : ''
+  return combo ? t('window.closeHint', { key: formatCombo(combo) }) : ''
 })
 
 const { startMove, startResize } = useDraggable(
@@ -53,7 +54,7 @@ function clamp(): void {
       <span v-if="closeHint" class="titlebar__hint">{{ closeHint }}</span>
       <button
         class="btn btn--sm btn--icon btn--ghost"
-        :title="session.dimmed ? '불투명하게' : '흐리게'"
+        :title="session.dimmed ? t('window.undim') : t('window.dim')"
         @mousedown.stop
         @click="session.dimmed = !session.dimmed"
       >
@@ -61,13 +62,13 @@ function clamp(): void {
       </button>
       <button
         class="btn btn--sm btn--icon btn--ghost"
-        title="창 위치 초기화"
+        :title="t('window.resetGeometry')"
         @mousedown.stop
         @click="session.resetGeometry()"
       >
         <AppIcon name="reset" :size="14" />
       </button>
-      <button class="btn btn--sm btn--icon btn--ghost" title="닫기" @mousedown.stop @click="session.hide()">
+      <button class="btn btn--sm btn--icon btn--ghost" :title="t('common.close')" @mousedown.stop @click="session.hide()">
         <AppIcon name="close" :size="14" />
       </button>
     </div>

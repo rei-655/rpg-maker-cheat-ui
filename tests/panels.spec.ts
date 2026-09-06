@@ -2,6 +2,7 @@ import { mount, type VueWrapper } from '@vue/test-utils'
 import { nextTick, type Component } from 'vue'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it } from 'vitest'
+import { setLocale, t } from '@/i18n'
 
 import VariablesPanel from '@/features/variables/VariablesPanel.vue'
 import SwitchesPanel from '@/features/switches/SwitchesPanel.vue'
@@ -36,6 +37,7 @@ async function setSearch(panel: VueWrapper, value: string): Promise<void> {
 
 beforeEach(() => {
   setActivePinia(createPinia())
+  setLocale('en')
   ;(globalThis as unknown as { __resetGame(): void }).__resetGame()
 })
 
@@ -166,9 +168,9 @@ describe('ItemsPanel', () => {
     const panel = await open(ItemsPanel)
 
     expect(panel.findAll('.tab').map((tab) => tab.text())).toEqual([
-      expect.stringContaining('아이템'),
-      expect.stringContaining('무기'),
-      expect.stringContaining('방어구')
+      expect.stringContaining(t('items.items')),
+      expect.stringContaining(t('items.weapons')),
+      expect.stringContaining(t('items.armors'))
     ])
   })
 })
@@ -178,8 +180,8 @@ describe('LocationsPanel', () => {
     const panel = await open(LocationsPanel)
     const heads = panel.findAll('.section__head').map((head) => head.text())
 
-    expect(heads.join(' ')).toContain('저장한 위치')
-    expect(heads.join(' ')).toContain('맵')
+    expect(heads.join(' ')).toContain(t('locations.saved'))
+    expect(heads.join(' ')).toContain(t('locations.maps'))
   })
 
   it('resolves the map path instead of the bare name', async () => {
@@ -197,8 +199,8 @@ describe('SettingsPanel', () => {
   it('holds the shortcut list, which used to be a top-level menu entry', async () => {
     const panel = await open(SettingsPanel)
 
-    expect(panel.findAll('.tab').map((tab) => tab.text())).toEqual(['단축키', '창'])
-    expect(panel.text()).toContain('치트 창 열기')
+    expect(panel.findAll('.tab').map((tab) => tab.text())).toEqual([t('settings.shortcuts'), t('settings.general')])
+    expect(panel.text()).toContain(t('action.toggleWindow'))
   })
 
   it('has no translation settings any more', async () => {
@@ -218,6 +220,5 @@ describe('HomePanel', () => {
     const text = (await open(HomePanel)).text()
 
     expect(text).not.toContain('Speed')
-    expect(text).not.toContain('스피드')
   })
 })

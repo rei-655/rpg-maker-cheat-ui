@@ -1,11 +1,11 @@
 export type Refinement = 'changed' | 'unchanged' | 'increased' | 'decreased' | 'equals'
 
-export const REFINEMENTS: { key: Refinement; label: string; operand?: true }[] = [
-  { key: 'changed', label: '변함' },
-  { key: 'unchanged', label: '그대로' },
-  { key: 'increased', label: '증가' },
-  { key: 'decreased', label: '감소' },
-  { key: 'equals', label: '= 값', operand: true }
+export const REFINEMENTS: { key: Refinement; operand?: true }[] = [
+  { key: 'changed' },
+  { key: 'unchanged' },
+  { key: 'increased' },
+  { key: 'decreased' },
+  { key: 'equals', operand: true }
 ]
 
 /**

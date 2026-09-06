@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ACTIONS, findAction, type ActionSpec } from '@/app/actions'
 import { JsonStore } from '@/engine/storage'
+import { t } from '@/i18n'
 
 export interface Binding {
   combo: string
@@ -48,7 +49,7 @@ export const useShortcuts = defineStore('shortcuts', {
     rebind(id: string, combo: string): string | null {
       const taken = combo ? this.byCombo.get(combo) : undefined
 
-      if (taken && taken.id !== id) return `이미 "${taken.label}" 에 배정된 키입니다`
+      if (taken && taken.id !== id) return t('keys.conflict', { label: t(taken.labelKey) })
 
       this.binding(id).combo = combo
       this.persist()

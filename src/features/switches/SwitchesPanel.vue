@@ -8,6 +8,7 @@ import { matches, parseQuery } from '@/shared/lib/query'
 import { confirm } from '@/shared/composables/useConfirm'
 import { toast } from '@/shared/composables/useToast'
 import { useSession } from '@/stores/session'
+import { t } from '@/i18n'
 
 interface Row {
   id: number
@@ -15,11 +16,11 @@ interface Row {
   value: boolean
 }
 
-const columns: Column[] = [
-  { key: 'id', label: 'ID', width: 64, align: 'right' },
-  { key: 'name', label: '이름', width: 320 },
-  { key: 'value', label: '상태', width: 96 }
-]
+const columns = computed<Column[]>(() => [
+  { key: 'id', label: t('col.id'), width: 64, align: 'right' },
+  { key: 'name', label: t('col.name'), width: 320 },
+  { key: 'value', label: t('col.state'), width: 96 }
+])
 
 const view = useSession().view('switches', { perPage: 25, widths: { id: 64, name: 320 } })
 const rows = ref<Row[]>([])
@@ -47,12 +48,12 @@ function toggle(row: Row): void {
 
 async function setAll(value: boolean): Promise<void> {
   const targets = [...shown.value]
-  const label = value ? 'ON' : 'OFF'
+  const state = t(value ? 'common.on' : 'common.off')
 
   const ok = await confirm({
-    title: `스위치 일괄 ${label}`,
-    message: `현재 목록의 ${targets.length}개를 모두 ${label} 으로 바꾼다.`,
-    confirmText: label,
+    title: t('switches.bulkTitle', { state }),
+    message: t('switches.bulkMessage', { count: targets.length, state }),
+    confirmText: state,
     danger: true
   })
 
@@ -63,7 +64,7 @@ async function setAll(value: boolean): Promise<void> {
     row.value = value
   }
 
-  toast.success(`${targets.length}개를 ${label} 으로 바꿨다`)
+  toast.success(t('switches.bulkToast', { count: targets.length, state }))
 }
 </script>
 
@@ -72,7 +73,7 @@ async function setAll(value: boolean): Promise<void> {
     <div class="toolbar">
       <SearchBox
         v-model="view.search"
-        placeholder="이름 · #12 · on · off"
+        :placeholder="t('switches.searchPlaceholder')"
         :shown="shown.length"
         :total="rows.length"
         autofocus
@@ -80,14 +81,14 @@ async function setAll(value: boolean): Promise<void> {
 
       <div class="chips">
         <button class="chip" :class="{ 'chip--active': view.flags.named }" @click="view.flags.named = !view.flags.named">
-          이름 있는 것만
+          {{ t('switches.namedOnly') }}
         </button>
       </div>
 
       <span class="spacer" />
-      <button class="btn btn--sm" :disabled="shown.length === 0" @click="setAll(true)">전체 ON</button>
-      <button class="btn btn--sm" :disabled="shown.length === 0" @click="setAll(false)">전체 OFF</button>
-      <button class="btn btn--sm btn--icon" title="게임에서 다시 읽기" @click="refresh">
+      <button class="btn btn--sm" :disabled="shown.length === 0" @click="setAll(true)">{{ t('switches.allOn') }}</button>
+      <button class="btn btn--sm" :disabled="shown.length === 0" @click="setAll(false)">{{ t('switches.allOff') }}</button>
+      <button class="btn btn--sm btn--icon" :title="t('common.refreshGame')" @click="refresh">
         <AppIcon name="refresh" :size="13" />
       </button>
     </div>
@@ -100,18 +101,18 @@ async function setAll(value: boolean): Promise<void> {
         v-model:widths="view.widths"
         :columns="columns"
         :rows="shown"
-        empty-text="조건에 맞는 스위치가 없습니다."
+        :empty-text="t('switches.empty')"
       >
         <template #id="{ row }">
           <span class="cell-id">{{ row.id }}</span>
         </template>
         <template #name="{ row }">
-          <span :class="{ faint: !row.name }">{{ row.name || '(이름 없음)' }}</span>
+          <span :class="{ faint: !row.name }">{{ row.name || t('common.unnamed') }}</span>
         </template>
         <template #value="{ row }">
-          <button class="btn btn--sm" :title="row.value ? '끄기' : '켜기'" @click="toggle(row)">
+          <button class="btn btn--sm" :title="t(row.value ? 'switches.turnOff' : 'switches.turnOn')" @click="toggle(row)">
             <span class="dot" :class="row.value ? 'dot-ok' : 'dot-muted'" />
-            {{ row.value ? 'ON' : 'OFF' }}
+            {{ t(row.value ? 'common.on' : 'common.off') }}
           </button>
         </template>
       </DataTable>
