@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="user-scalable=no">
+  <link rel="stylesheet" type="text/css" href="game.css">
+  <title>cheat-ui harness</title>
+</head>
+<body style="background-color: black">
+  <script src="engine-stub.js"></script>
+  <script>
+    (function () {
+      const spinner = document.createElement('div')
+      spinner.id = 'loadingSpinner'
+      spinner.appendChild(Object.assign(document.createElement('div'), { id: 'loadingSpinnerImage' }))
+      document.body.appendChild(spinner)
+
+      const canvas = document.createElement('canvas')
+      canvas.id = 'gameCanvas'
+      canvas.width = 816
+      canvas.height = 624
+      canvas.style.cssText = 'position:absolute;left:0;top:0'
+      document.body.appendChild(canvas)
+
+      window.__baseline = window.measureLayout()
+    })()
+  </script>
+  <link rel="stylesheet" href="../../dist/cheat-ui.css">
+  <script src="../../dist/cheat-ui.js"></script>
+</body>
+</html>

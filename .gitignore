@@ -1,0 +1,8 @@
+node_modules/
+*.log
+*.tsbuildinfo
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.cheatui-backup-*

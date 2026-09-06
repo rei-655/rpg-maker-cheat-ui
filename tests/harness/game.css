@@ -1,0 +1,19 @@
+/* RPG Maker が生成する読み込み画面の再現。実際のゲーム資産は含めない。 */
+#loadingSpinner {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  margin: auto;
+  width: 48px;
+  height: 48px;
+}
+
+#loadingSpinnerImage {
+  width: 48px;
+  height: 48px;
+  border: 4px solid #222;
+  border-top-color: #888;
+  border-radius: 50%;
+}
