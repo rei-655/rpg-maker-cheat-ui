@@ -45,7 +45,8 @@ each other in the test suite so they cannot drift apart.
 What the installer does:
 
 - detects the MV (`www/`) or MZ (project root) layout
-- copies `dist/` next to `index.html`
+- copies the assets into `cheat-ui/` next to `index.html`, moving aside (never
+  deleting) a folder of that name the game already had
 - installs `plugin/CheatUILoader.js` into `js/plugins/`
 - appends the plugin to `js/plugins.js` as **text**, so existing entries keep
   their exact bytes (BOM included)
@@ -200,7 +201,8 @@ Windows 以外には同じ動きの Node 版がある。
 導入時にすること:
 
 - MV（`www/`）と MZ（プロジェクト直下）の配置を自動判別
-- `dist/` を `index.html` と同じ階層へコピー
+- アセットを `index.html` と同じ階層の `cheat-ui/` へコピー。同名のフォルダが
+  すでにあれば消さずに退避する
 - `plugin/CheatUILoader.js` を `js/plugins/` へ配置
 - `js/plugins.js` へ**テキストとして**追記。既存項目は 1 バイトも変わらない（BOM も維持）
 - 書き込む前に結果を検証し、少しでも怪しければ何も書かない
