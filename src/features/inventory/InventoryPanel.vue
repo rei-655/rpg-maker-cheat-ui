@@ -5,6 +5,7 @@ import SearchBox from '@/shared/ui/SearchBox.vue'
 import ValueInput from '@/shared/ui/ValueInput.vue'
 import DataTable, { type Column } from '@/shared/ui/DataTable.vue'
 import { party, rpg } from '@/engine/globals'
+import { MAX_GOLD, wallet } from '@/engine/cheats'
 import type { DataItem } from '@/engine/types'
 import { matches, parseQuery } from '@/shared/lib/query'
 import { clamp, toInt } from '@/shared/lib/coerce'
@@ -35,13 +36,14 @@ const columns = computed<Column[]>(() => [
   { key: 'amount', label: t('col.amount'), width: 210, align: 'right' }
 ])
 
-const view = useSession().view('items', {
+const view = useSession().view('inventory', {
   tab: 'items',
   perPage: 25,
   widths: { id: 64, name: 200, desc: 260 }
 })
 
 const rows = ref<Row[]>([])
+const gold = ref(0)
 const counts = reactive<Record<string, number>>({ items: 0, weapons: 0, armors: 0 })
 
 const shown = computed(() => {
@@ -77,6 +79,14 @@ function refresh(): void {
     }))
 
   for (const entry of TABS) counts[entry.key] = (entry.source() ?? []).filter(Boolean).length
+
+  gold.value = wallet.gold()
+}
+
+function setGold(raw: string | number): void {
+  const value = toInt(raw)
+  if (value !== null) wallet.setGold(value)
+  gold.value = wallet.gold()
 }
 
 function commit(row: Row, raw: string | number): void {
@@ -95,20 +105,32 @@ async function fillAll(): Promise<void> {
   const targets = [...shown.value]
 
   const ok = await confirm({
-    title: t('items.fillTitle'),
-    message: t('items.fillMessage', { count: targets.length }),
-    confirmText: t('items.fillConfirm')
+    title: t('inventory.fillAll'),
+    message: t('inventory.fillMessage', { count: targets.length }),
+    confirmText: t('common.max')
   })
 
   if (!ok) return
 
   targets.forEach((row) => commit(row, row.max))
-  toast.success(t('items.filledToast', { count: targets.length }))
+  toast.success(t('inventory.filledToast', { count: targets.length }))
 }
 </script>
 
 <template>
   <div class="content">
+    <div class="strip">
+      <div class="field">
+        <span class="field__label">{{ t('inventory.gold') }}</span>
+        <div class="row">
+          <ValueInput :value="gold" :width="150" :title="t('common.commitHint')" @commit="setGold" />
+          <button class="btn btn--sm" :title="t('common.max')" @click="setGold(MAX_GOLD)">{{ t('common.max') }}</button>
+        </div>
+      </div>
+      <span class="spacer" />
+      <span class="hint">{{ t('inventory.lead') }}</span>
+    </div>
+
     <div class="tabs">
       <button
         v-for="tab in TABS"
@@ -117,14 +139,14 @@ async function fillAll(): Promise<void> {
         :class="{ 'tab--active': tab.key === view.tab }"
         @click="selectTab(tab.key)"
       >
-        {{ t(`items.${tab.key}`) }}<span class="tab__count">{{ counts[tab.key] }}</span>
+        {{ t(`inventory.${tab.key}`) }}<span class="tab__count">{{ counts[tab.key] }}</span>
       </button>
     </div>
 
     <div class="toolbar">
       <SearchBox
         v-model="view.search"
-        :placeholder="t('items.searchPlaceholder')"
+        :placeholder="t('inventory.search')"
         :shown="shown.length"
         :total="rows.length"
         autofocus
@@ -132,13 +154,13 @@ async function fillAll(): Promise<void> {
 
       <div class="chips">
         <button class="chip" :class="{ 'chip--active': view.flags.owned }" @click="view.flags.owned = !view.flags.owned">
-          {{ t('items.ownedOnly') }}
+          {{ t('inventory.ownedOnly') }}
         </button>
       </div>
 
       <span class="spacer" />
-      <button class="btn btn--sm" :disabled="shown.length === 0" @click="fillAll">{{ t('items.fillAll') }}</button>
-      <button class="btn btn--sm btn--icon" :title="t('common.refreshGame')" @click="refresh">
+      <button class="btn btn--sm" :disabled="shown.length === 0" @click="fillAll">{{ t('inventory.fillAll') }}</button>
+      <button class="btn btn--sm btn--icon" :title="t('common.refresh')" @click="refresh">
         <AppIcon name="refresh" :size="13" />
       </button>
     </div>
@@ -151,7 +173,7 @@ async function fillAll(): Promise<void> {
         v-model:widths="view.widths"
         :columns="columns"
         :rows="shown"
-        :empty-text="t('items.empty')"
+        :empty-text="t('inventory.empty')"
       >
         <template #id="{ row }">
           <span class="cell-id">{{ row.id }}</span>

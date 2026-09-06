@@ -62,7 +62,7 @@ async function restore(): Promise<void> {
   const ok = await confirm({
     title: t('settings.restoreTitle'),
     message: t('settings.restoreMessage'),
-    confirmText: t('settings.restoreConfirm'),
+    confirmText: t('common.reset'),
     danger: true
   })
 

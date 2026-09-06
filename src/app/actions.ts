@@ -35,10 +35,16 @@ export const ACTIONS: ActionSpec[] = [
     run: () => ui.toggleWindow()
   },
   {
-    id: 'openLocations',
-    labelKey: 'action.openLocations',
+    id: 'openTravel',
+    labelKey: 'action.openTravel',
     defaultCombo: 'ctrl+KeyM',
-    run: () => ui.openWindow('locations')
+    run: () => ui.openWindow('travel')
+  },
+  {
+    id: 'openUnstuck',
+    labelKey: 'action.openUnstuck',
+    defaultCombo: 'ctrl+KeyU',
+    run: () => ui.openWindow('unstuck')
   },
   {
     id: 'quickSave',
@@ -142,7 +148,7 @@ export function findAction(id: string): ActionSpec | undefined {
 }
 
 function finish(kind: 'victory' | 'defeat' | 'escape'): void {
-  if (battle.finish(kind)) toast.success(t('toast.battleFinished', { kind: t(`battle.${kind}`) }))
+  if (battle.finish(kind)) toast.success(t('combat.finished', { kind: t(`combat.${kind}`) }))
   else toast.warn(t('toast.onlyInBattle'))
 }
 

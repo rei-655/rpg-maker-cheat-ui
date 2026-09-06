@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, onBeforeUnmount } from 'vue'
 import AppIcon from '@/shared/ui/AppIcon.vue'
-import { PANELS, findPanel } from './panels'
+import StatusBar from './StatusBar.vue'
+import { GROUPS, findPanel, panelsOf } from './panels'
 import { formatCombo } from './keys'
 import { useSession } from '@/stores/session'
 import { useShortcuts } from '@/stores/shortcuts'
@@ -49,7 +50,7 @@ function clamp(): void {
   >
     <div class="titlebar" @mousedown="startMove">
       <span class="titlebar__grip"><AppIcon name="grip" :size="15" /></span>
-      <span class="titlebar__crumb">Cheat · <b>{{ panel.label }}</b></span>
+      <span class="titlebar__crumb"><b>{{ t(panel.labelKey) }}</b> · {{ t(panel.hintKey) }}</span>
       <span class="spacer" />
       <span v-if="closeHint" class="titlebar__hint">{{ closeHint }}</span>
       <button
@@ -75,16 +76,20 @@ function clamp(): void {
 
     <div class="window__body">
       <nav class="nav">
-        <button
-          v-for="entry in PANELS"
-          :key="entry.id"
-          class="nav__item"
-          :class="{ 'nav__item--active': entry.id === panel.id }"
-          @click="session.panelId = entry.id"
-        >
-          <AppIcon :name="entry.icon" :size="15" />
-          <span>{{ entry.label }}</span>
-        </button>
+        <template v-for="group in GROUPS" :key="group.id">
+          <div class="nav__group">{{ t(group.labelKey) }}</div>
+          <button
+            v-for="entry in panelsOf(group.id)"
+            :key="entry.id"
+            class="nav__item"
+            :class="{ 'nav__item--active': entry.id === panel.id }"
+            :title="t(entry.hintKey)"
+            @click="session.panelId = entry.id"
+          >
+            <AppIcon :name="entry.icon" :size="15" />
+            <span>{{ t(entry.labelKey) }}</span>
+          </button>
+        </template>
       </nav>
 
       <section class="content">
@@ -92,6 +97,7 @@ function clamp(): void {
       </section>
     </div>
 
+    <StatusBar />
     <div class="window__resize" @mousedown="startResize" />
   </div>
 </template>

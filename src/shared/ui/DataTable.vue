@@ -189,7 +189,7 @@ function compare(a: unknown, b: unknown): number {
       <span class="pager__pos">{{ range }}</span>
       <select v-model.number="perPage" class="input" @change="page = 1">
         <option v-for="option in PER_PAGE" :key="option" :value="option">
-          {{ option === 0 ? t('common.allRows') : t('common.rowsOption', { count: option }) }}
+          {{ option === 0 ? t('common.allRows') : t('common.rows', { count: option }) }}
         </option>
       </select>
       <button class="btn btn--sm btn--icon" :disabled="current <= 1" :title="t('common.firstPage')" @click="goTo(1)">
