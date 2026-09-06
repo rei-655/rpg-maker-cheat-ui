@@ -28,6 +28,12 @@
 (function () {
   'use strict'
 
+  // ツクール MV 1.6 の NW.js 0.29 は Chromium 66 で globalThis を持たない。
+  // バンドルより先に読み込まれるここで補っておく。
+  if (typeof window.globalThis === 'undefined') {
+    window.globalThis = window
+  }
+
   var params = PluginManager.parameters('CheatUILoader')
   var dir = String(params.assetDir || 'cheat-ui').replace(/\/+$/, '')
 

@@ -1,4 +1,5 @@
 import { isMV } from './engine'
+import { root } from './root'
 
 export const HOST_ID = 'cheat-ui-root'
 
@@ -36,8 +37,8 @@ export function installInputGuards(): void {
   if (installed) return
   installed = true
 
-  const touch = (globalThis as unknown as { TouchInput?: Wrappable }).TouchInput
-  const input = (globalThis as unknown as { Input?: Wrappable }).Input
+  const touch = root.TouchInput as Wrappable | undefined
+  const input = root.Input as Wrappable | undefined
 
   if (touch) {
     for (const name of ['_onMouseDown', '_onMouseMove', '_onMouseUp'] as const) {
