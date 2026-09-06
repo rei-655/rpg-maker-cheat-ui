@@ -7,6 +7,7 @@ interface Stubs {
 
 /** テスト対象が触る範囲だけの最小 RPG Maker スタブ。 */
 export function installEngine(stubs: Stubs = {}): void {
+  const actors = [makeActor('Harold', 1), makeActor('Therese', 2)]
   const variableValues: Record<number, unknown> = {}
   const switchValues: Record<number, boolean> = {}
   const owned: Record<number, number> = {}
@@ -55,7 +56,7 @@ export function installEngine(stubs: Stubs = {}): void {
 
     $gameParty: {
       _gold: 500,
-      members: () => [],
+      members: () => actors,
       numItems: (item: { id: number }) => owned[item.id] ?? 0,
       maxItems: () => 99,
       gainItem: (item: { id: number }, amount: number) => {
@@ -98,6 +99,49 @@ export function installEngine(stubs: Stubs = {}): void {
       for (const key of Object.keys(owned)) delete owned[Number(key)]
     }
   })
+}
+
+function makeActor(name: string, id: number) {
+  const states: { id: number; name: string }[] = []
+
+  return {
+    _actorId: id,
+    _paramPlus: [0, 0, 0, 0, 0, 0, 0, 0],
+    hp: 120,
+    mhp: 300,
+    mp: 10,
+    mmp: 40,
+    tp: 5,
+    level: 12,
+    name: () => name,
+    maxTp: () => 100,
+    maxLevel: () => 99,
+    currentExp: () => 1200,
+    param: (paramId: number) => 40 + paramId,
+    addParam: vi.fn(),
+    changeLevel: vi.fn(),
+    changeExp: vi.fn(),
+    setHp(value: number) {
+      this.hp = value
+    },
+    setMp(value: number) {
+      this.mp = value
+    },
+    setTp(value: number) {
+      this.tp = value
+    },
+    gainHp: vi.fn(),
+    gainMp: vi.fn(),
+    gainTp: vi.fn(),
+    paySkillCost: vi.fn(),
+    states: () => states,
+    buff: () => 0,
+    addState: (stateId: number) => states.push({ id: stateId, name: `State ${stateId}` }),
+    removeState: vi.fn(),
+    clearStates: () => states.splice(0, states.length),
+    removeBuff: vi.fn(),
+    removeAllBuffs: vi.fn()
+  }
 }
 
 installEngine()

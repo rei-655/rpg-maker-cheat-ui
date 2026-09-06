@@ -3,6 +3,7 @@ import { createPinia } from 'pinia'
 import App from './App.vue'
 import { HOST_ID, installInputGuards } from './engine/input'
 import { installMessageSkip } from './engine/messages'
+import { installVisitLog } from './engine/visits'
 import './shared/styles/base.css'
 
 declare global {
@@ -25,6 +26,7 @@ function mount(): void {
 
   installInputGuards()
   installMessageSkip()
+  installVisitLog()
 
   createApp(App).use(createPinia()).mount(host)
 }

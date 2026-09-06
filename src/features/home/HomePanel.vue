@@ -1,39 +1,58 @@
 <script setup lang="ts">
 import { onMounted, reactive } from 'vue'
 import AppIcon from '@/shared/ui/AppIcon.vue'
-import CheckBox from '@/shared/ui/CheckBox.vue'
-import ValueInput from '@/shared/ui/ValueInput.vue'
 import { homeCards } from '@/app/panels'
-import { MAX_GOLD, movement, scenes, wallet } from '@/engine/cheats'
-import { currentMapId, has, partyMembers, player } from '@/engine/globals'
-import { toInt } from '@/shared/lib/coerce'
+import { MAX_GOLD, battle, encounters, godMode, movement, scenes, wallet } from '@/engine/cheats'
+import { partyMembers } from '@/engine/globals'
+import { toast } from '@/shared/composables/useToast'
 import { useSession } from '@/stores/session'
 import { t } from '@/i18n'
 
 const session = useSession()
 const cards = homeCards()
 
-const snapshot = reactive({ gold: 0, party: 0, mapId: 0, x: 0, y: 0, noClip: false })
+const state = reactive({ noClip: false, noEncounter: false, god: 0, party: 0 })
 
 onMounted(refresh)
 
 function refresh(): void {
-  snapshot.gold = wallet.gold()
-  snapshot.party = partyMembers().length
-  snapshot.mapId = currentMapId()
-  snapshot.x = has('$gamePlayer') ? player().x : 0
-  snapshot.y = has('$gamePlayer') ? player().y : 0
-  snapshot.noClip = movement.noClip()
+  const members = partyMembers()
+
+  state.noClip = movement.noClip()
+  state.noEncounter = encounters.disabled()
+  state.party = members.length
+  state.god = members.filter((actor) => godMode.isOn(actor)).length
 }
 
-function setGold(raw: string | number): void {
-  const value = toInt(raw)
-  if (value !== null) wallet.setGold(value)
+function fillGold(): void {
+  wallet.setGold(MAX_GOLD)
+  toast.success(t('home.goldFilled'))
+}
+
+function healParty(): void {
+  battle.recoverAll(partyMembers())
+  toast.success(t('home.healed'))
+}
+
+function toggleGodAll(): void {
+  const members = partyMembers()
+  const turnOn = state.god < members.length
+
+  for (const actor of members) {
+    if (godMode.isOn(actor) !== turnOn) godMode.toggle(actor)
+  }
+
   refresh()
+  toast.success(turnOn ? t('home.godOn', { count: members.length }) : t('home.godOff'))
 }
 
 function toggleNoClip(): void {
   movement.toggleNoClip()
+  refresh()
+}
+
+function toggleEncounters(): void {
+  encounters.toggle()
   refresh()
 }
 </script>
@@ -41,27 +60,8 @@ function toggleNoClip(): void {
 <template>
   <div class="content">
     <div class="strip">
-      <div class="stat">
-        <div class="stat__label">{{ t('home.gold') }}</div>
-        <div class="stat__value">{{ snapshot.gold.toLocaleString() }}</div>
-      </div>
-      <div class="stat">
-        <div class="stat__label">{{ t('home.party') }}</div>
-        <div class="stat__value">{{ snapshot.party }}</div>
-      </div>
-      <div class="stat">
-        <div class="stat__label">{{ t('home.map') }}</div>
-        <div class="stat__value">{{ snapshot.mapId }}</div>
-      </div>
-      <div class="stat">
-        <div class="stat__label">{{ t('home.pos') }}</div>
-        <div class="stat__value">{{ snapshot.x }}, {{ snapshot.y }}</div>
-      </div>
+      <span class="hint">{{ t('home.lead') }}</span>
       <span class="spacer" />
-      <span class="status">
-        <span class="dot" :class="snapshot.noClip ? 'dot-warn' : 'dot-muted'" />
-        {{ t('home.noClip') }} {{ t(snapshot.noClip ? 'common.on' : 'common.off') }}
-      </span>
       <button class="btn btn--sm btn--icon" :title="t('common.refresh')" @click="refresh">
         <AppIcon name="refresh" :size="13" />
       </button>
@@ -69,28 +69,57 @@ function toggleNoClip(): void {
 
     <div class="content__scroll">
       <div class="section">
-        <div class="section__head">{{ t('home.quickActions') }}</div>
+        <div class="section__head">{{ t('home.money') }}</div>
+        <div class="section__body">
+          <button class="big" @click="fillGold">
+            <AppIcon name="items" :size="18" />
+            <span>{{ t('home.maxGold') }}</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section__head">{{ t('home.survive') }}</div>
         <div class="section__body row-wrap">
-          <div class="field">
-            <span class="field__label">{{ t('home.gold') }}</span>
-            <div class="row">
-              <ValueInput :value="snapshot.gold" :width="140" :title="t('common.commitHint')" @commit="setGold" />
-              <button class="btn" :title="t('common.max')" @click="setGold(MAX_GOLD)">Max</button>
-            </div>
-          </div>
+          <button class="big" :disabled="state.party === 0" @click="healParty">
+            <AppIcon name="status" :size="18" />
+            <span>{{ t('home.healParty') }}</span>
+          </button>
+          <button
+            class="big"
+            :class="{ 'big--on': state.party > 0 && state.god === state.party }"
+            :disabled="state.party === 0"
+            @click="toggleGodAll"
+          >
+            <AppIcon name="battle" :size="18" />
+            <span>{{ state.party > 0 && state.god === state.party ? t('home.godAllOff') : t('home.godAll') }}</span>
+          </button>
+        </div>
+      </div>
 
-          <div class="field">
-            <span class="field__label">{{ t('home.movement') }}</span>
-            <CheckBox v-model="snapshot.noClip" :label="t('home.noClip')" @update:model-value="toggleNoClip" />
-          </div>
+      <div class="section">
+        <div class="section__head">{{ t('home.explore') }}</div>
+        <div class="section__body row-wrap">
+          <button class="big" :class="{ 'big--on': state.noClip }" @click="toggleNoClip">
+            <AppIcon name="locations" :size="18" />
+            <span>{{ t('home.noClip') }}</span>
+            <span class="big__state">{{ t(state.noClip ? 'common.on' : 'common.off') }}</span>
+          </button>
+          <button class="big" :class="{ 'big--on': state.noEncounter }" @click="toggleEncounters">
+            <AppIcon name="states" :size="18" />
+            <span>{{ t('home.noEncounter') }}</span>
+            <span class="big__state">{{ t(state.noEncounter ? 'common.on' : 'common.off') }}</span>
+          </button>
+        </div>
+      </div>
 
-          <div class="field grow">
-            <span class="field__label">{{ t('home.screen') }}</span>
-            <div class="btn-group">
-              <button class="btn" @click="scenes.toggleSave()"><AppIcon name="save" :size="13" />{{ t('home.save') }}</button>
-              <button class="btn" @click="scenes.toggleLoad()"><AppIcon name="load" :size="13" />{{ t('home.load') }}</button>
-              <button class="btn" @click="scenes.toTitle()"><AppIcon name="home" :size="13" />{{ t('home.title') }}</button>
-            </div>
+      <div class="section">
+        <div class="section__head">{{ t('home.screens') }}</div>
+        <div class="section__body">
+          <div class="btn-group">
+            <button class="btn" @click="scenes.toggleSave()"><AppIcon name="save" :size="13" />{{ t('home.save') }}</button>
+            <button class="btn" @click="scenes.toggleLoad()"><AppIcon name="load" :size="13" />{{ t('home.load') }}</button>
+            <button class="btn" @click="scenes.toTitle()"><AppIcon name="home" :size="13" />{{ t('home.title') }}</button>
           </div>
         </div>
       </div>
@@ -99,15 +128,10 @@ function toggleNoClip(): void {
         <div class="section__head">{{ t('home.links') }}</div>
         <div class="section__body">
           <div class="hub">
-            <button
-              v-for="card in cards"
-              :key="card.id"
-              class="hub__card"
-              @click="session.panelId = card.id"
-            >
+            <button v-for="card in cards" :key="card.id" class="hub__card" @click="session.panelId = card.id">
               <AppIcon :name="card.icon" :size="17" />
               <span>
-                <span class="hub__name">{{ card.label }}</span>
+                <span class="hub__name">{{ t(card.labelKey) }}</span>
                 <span class="hub__desc">{{ t(card.hintKey) }}</span>
               </span>
             </button>

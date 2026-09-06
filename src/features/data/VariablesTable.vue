@@ -24,7 +24,7 @@ const columns = computed<Column[]>(() => [
   { key: 'value', label: t('col.value'), align: 'right' }
 ])
 
-const view = useSession().view('variables', { perPage: 25, widths: { id: 64, name: 260 } })
+const view = useSession().view('data.variables', { perPage: 25, widths: { id: 64, name: 260 } })
 const rows = ref<Row[]>([])
 const editing = ref(new Set<number>())
 const operand = ref('')
@@ -39,7 +39,7 @@ const shown = computed(() => {
     if (editing.value.has(row.id)) return true
     if (view.flags.named && !row.name) return false
     if (view.flags.nonZero && !row.value) return false
-    if (scan.active && view.flags.scanOnly !== false && !scanner.has(row.id)) return false
+    if (scan.active && view.flags.onlyCandidates !== false && !scanner.has(row.id)) return false
 
     return matches(query, { id: row.id, value: row.value, texts: [row.name] })
   })
@@ -48,9 +48,7 @@ const shown = computed(() => {
 onMounted(refresh)
 
 function refresh(): void {
-  const names = variableNames()
-
-  rows.value = names
+  rows.value = variableNames()
     .map((name, id) => ({ id, name: name ?? '', value: id > 0 ? variables().value(id) : 0 }))
     .slice(1)
 
@@ -72,24 +70,23 @@ function commit(row: Row, raw: string): void {
 
 function startScan(): void {
   scanner.start(rows.value.map((row) => row.id))
-  view.flags.scanOnly = true
+  view.flags.onlyCandidates = true
   syncScan()
-  toast.info(t('variables.snapshotToast', { count: scanner.count }))
+  toast.info(t('data.scanStarted', { count: scanner.count }))
 }
 
 function refine(kind: Refinement, needsOperand?: true): void {
   const value = needsOperand ? Number(operand.value) : null
 
   if (needsOperand && !Number.isFinite(value)) {
-    toast.warn(t('variables.needNumber'))
+    toast.warn(t('data.needNumber'))
     return
   }
 
   const remaining = scanner.refine(kind, value)
   refresh()
 
-  if (remaining === 0) toast.warn(t('variables.noCandidates'))
-  else toast.success(t('variables.candidateToast', { count: remaining }))
+  if (remaining === 0) toast.warn(t('data.noCandidates'))
 }
 
 function stopScan(): void {
@@ -105,11 +102,11 @@ function syncScan(): void {
 </script>
 
 <template>
-  <div class="content">
+  <div>
     <div class="toolbar">
       <SearchBox
         v-model="view.search"
-        :placeholder="t('variables.searchPlaceholder')"
+        :placeholder="t('data.variableSearch')"
         :shown="shown.length"
         :total="rows.length"
         autofocus
@@ -117,74 +114,76 @@ function syncScan(): void {
 
       <div class="chips">
         <button class="chip" :class="{ 'chip--active': view.flags.named }" @click="view.flags.named = !view.flags.named">
-          {{ t('variables.namedOnly') }}
+          {{ t('data.namedOnly') }}
         </button>
         <button
           class="chip"
           :class="{ 'chip--active': view.flags.nonZero }"
           @click="view.flags.nonZero = !view.flags.nonZero"
         >
-          {{ t('variables.nonZero') }}
+          {{ t('data.nonZero') }}
         </button>
         <button
           v-if="scan.active"
           class="chip"
-          :class="{ 'chip--active': view.flags.scanOnly !== false }"
-          @click="view.flags.scanOnly = view.flags.scanOnly === false"
+          :class="{ 'chip--active': view.flags.onlyCandidates !== false }"
+          @click="view.flags.onlyCandidates = view.flags.onlyCandidates === false"
         >
-          {{ t('variables.scanCandidates', { count: scan.count }) }}
+          {{ t('data.onlyCandidates') }} {{ scan.count }}
         </button>
       </div>
 
       <span class="spacer" />
-      <button class="btn btn--sm btn--icon" :title="t('common.refreshGame')" @click="refresh">
+      <button class="btn btn--sm btn--icon" :title="t('common.refresh')" @click="refresh">
         <AppIcon name="refresh" :size="13" />
       </button>
     </div>
 
-    <div class="toolbar">
-      <span class="chips__label">{{ t('variables.findValue') }}</span>
-      <button v-if="!scan.active" class="btn btn--primary" @click="startScan">
-        <AppIcon name="target" :size="13" />{{ t('variables.snapshot') }}
-      </button>
-      <template v-else>
-        <button
-          v-for="item in REFINEMENTS"
-          :key="item.key"
-          class="btn btn--sm"
-          :disabled="item.operand && operand === ''"
-          @click="refine(item.key, item.operand)"
-        >
-          {{ t(`scan.${item.key}`) }}
-        </button>
-        <input v-model="operand" class="input input--num" style="width: 96px" :placeholder="t('variables.operand')" @keydown.stop />
-        <span class="hint">{{ t('variables.candidates', { count: scan.count, passes: scan.passes }) }}</span>
-        <button class="btn btn--sm" @click="stopScan">{{ t('variables.stop') }}</button>
-      </template>
-      <span class="spacer" />
-      <span class="hint">{{ t('variables.scanHint') }}</span>
-    </div>
+    <details class="more" :open="scan.active">
+      <summary>{{ t('data.scan') }}</summary>
 
-    <div class="content__scroll">
-      <DataTable
-        v-model:sort="view.sort"
-        v-model:page="view.page"
-        v-model:per-page="view.perPage"
-        v-model:widths="view.widths"
-        :columns="columns"
-        :rows="shown"
-        :empty-text="t('variables.empty')"
-      >
-        <template #id="{ row }">
-          <span class="cell-id">{{ row.id }}</span>
+      <div class="row-wrap">
+        <button v-if="!scan.active" class="btn btn--primary" @click="startScan">
+          <AppIcon name="target" :size="13" />{{ t('data.scanStart') }}
+        </button>
+        <template v-else>
+          <button
+            v-for="item in REFINEMENTS"
+            :key="item.key"
+            class="btn btn--sm"
+            :disabled="item.operand && operand === ''"
+            @click="refine(item.key, item.operand)"
+          >
+            {{ t(`scan.${item.key}`) }}
+          </button>
+          <input v-model="operand" class="input input--num" style="width: 90px" :placeholder="t('col.value')" @keydown.stop />
+          <span class="hint">{{ t('data.candidates', { count: scan.count, passes: scan.passes }) }}</span>
+          <button class="btn btn--sm" @click="stopScan">{{ t('data.scanStop') }}</button>
         </template>
-        <template #name="{ row }">
-          <span :class="{ faint: !row.name }">{{ row.name || t('common.unnamed') }}</span>
-        </template>
-        <template #value="{ row }">
-          <ValueInput :value="row.value as number" @edit-start="pin(row.id)" @commit="commit(row, $event)" />
-        </template>
-      </DataTable>
-    </div>
+        <span class="spacer" />
+        <span class="hint">{{ t('data.scanHint') }}</span>
+      </div>
+    </details>
+
+    <DataTable
+      v-model:sort="view.sort"
+      v-model:page="view.page"
+      v-model:per-page="view.perPage"
+      v-model:widths="view.widths"
+      style="margin-top: 8px"
+      :columns="columns"
+      :rows="shown"
+      :empty-text="t('data.emptyVariables')"
+    >
+      <template #id="{ row }">
+        <span class="cell-id">{{ row.id }}</span>
+      </template>
+      <template #name="{ row }">
+        <span :class="{ faint: !row.name }">{{ row.name || t('common.unnamed') }}</span>
+      </template>
+      <template #value="{ row }">
+        <ValueInput :value="row.value as number" @edit-start="pin(row.id)" @commit="commit(row, $event)" />
+      </template>
+    </DataTable>
   </div>
 </template>

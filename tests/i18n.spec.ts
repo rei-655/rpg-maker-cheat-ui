@@ -78,15 +78,15 @@ describe('components', () => {
     const panel = mount(HomePanel)
     await nextTick()
 
-    expect(panel.text()).toContain(en['home.quickActions'])
+    expect(panel.text()).toContain(en['home.maxGold'])
 
     setLocale('ja')
     await nextTick()
-    expect(panel.text()).toContain(ja['home.quickActions'])
+    expect(panel.text()).toContain(ja['home.maxGold'])
 
     setLocale('ko')
     await nextTick()
-    expect(panel.text()).toContain(ko['home.quickActions'])
+    expect(panel.text()).toContain(ko['home.maxGold'])
     expect(locale.value).toBe('ko')
   })
 })

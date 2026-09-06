@@ -3,39 +3,48 @@ import type { IconName } from '@/shared/ui/icons'
 import type { MessageKey } from '@/i18n'
 
 import HomePanel from '@/features/home/HomePanel.vue'
-import BattlePanel from '@/features/battle/BattlePanel.vue'
-import StatusPanel from '@/features/status/StatusPanel.vue'
-import StatesPanel from '@/features/states/StatesPanel.vue'
-import ItemsPanel from '@/features/items/ItemsPanel.vue'
-import VariablesPanel from '@/features/variables/VariablesPanel.vue'
-import SwitchesPanel from '@/features/switches/SwitchesPanel.vue'
-import LocationsPanel from '@/features/locations/LocationsPanel.vue'
+import PartyPanel from '@/features/party/PartyPanel.vue'
+import InventoryPanel from '@/features/inventory/InventoryPanel.vue'
+import CombatPanel from '@/features/combat/CombatPanel.vue'
+import UnstuckPanel from '@/features/unstuck/UnstuckPanel.vue'
+import DataPanel from '@/features/data/DataPanel.vue'
+import TravelPanel from '@/features/travel/TravelPanel.vue'
 import SettingsPanel from '@/features/settings/SettingsPanel.vue'
+
+export type PanelGroup = 'now' | 'progress' | 'tool'
 
 export interface PanelSpec {
   id: string
-  label: string
-  icon: IconName
+  group: PanelGroup
+  labelKey: MessageKey
   hintKey: MessageKey
+  icon: IconName
   component: Component
   onHome?: boolean
 }
 
+/** 画面は「何をしたいか」で並べる。エンジンの内部構造は表に出さない。 */
 export const PANELS: PanelSpec[] = [
-  { id: 'home', label: 'Index', icon: 'home', hintKey: 'nav.home.hint', component: HomePanel, onHome: false },
-  { id: 'battle', label: 'Battle', icon: 'battle', hintKey: 'nav.battle.hint', component: BattlePanel },
-  { id: 'status', label: 'Status', icon: 'status', hintKey: 'nav.status.hint', component: StatusPanel },
-  { id: 'states', label: 'States', icon: 'states', hintKey: 'nav.states.hint', component: StatesPanel },
-  { id: 'items', label: 'Items', icon: 'items', hintKey: 'nav.items.hint', component: ItemsPanel },
-  { id: 'variables', label: 'Variables', icon: 'variables', hintKey: 'nav.variables.hint', component: VariablesPanel },
-  { id: 'switches', label: 'Switches', icon: 'switches', hintKey: 'nav.switches.hint', component: SwitchesPanel },
-  { id: 'locations', label: 'Locations', icon: 'locations', hintKey: 'nav.locations.hint', component: LocationsPanel },
-  { id: 'settings', label: 'Settings', icon: 'settings', hintKey: 'nav.settings.hint', component: SettingsPanel }
+  { id: 'home', group: 'now', labelKey: 'nav.home', hintKey: 'nav.home.hint', icon: 'home', component: HomePanel, onHome: false },
+  { id: 'party', group: 'now', labelKey: 'nav.party', hintKey: 'nav.party.hint', icon: 'status', component: PartyPanel },
+  { id: 'inventory', group: 'now', labelKey: 'nav.inventory', hintKey: 'nav.inventory.hint', icon: 'items', component: InventoryPanel },
+  { id: 'combat', group: 'progress', labelKey: 'nav.combat', hintKey: 'nav.combat.hint', icon: 'battle', component: CombatPanel },
+  { id: 'unstuck', group: 'progress', labelKey: 'nav.unstuck', hintKey: 'nav.unstuck.hint', icon: 'target', component: UnstuckPanel },
+  { id: 'data', group: 'progress', labelKey: 'nav.data', hintKey: 'nav.data.hint', icon: 'variables', component: DataPanel },
+  { id: 'travel', group: 'progress', labelKey: 'nav.travel', hintKey: 'nav.travel.hint', icon: 'locations', component: TravelPanel },
+  { id: 'settings', group: 'tool', labelKey: 'nav.settings', hintKey: 'nav.settings.hint', icon: 'settings', component: SettingsPanel }
+]
+
+export const GROUPS: { id: PanelGroup; labelKey: MessageKey }[] = [
+  { id: 'now', labelKey: 'nav.group.now' },
+  { id: 'progress', labelKey: 'nav.group.progress' },
+  { id: 'tool', labelKey: 'nav.group.tool' }
 ]
 
 export const DEFAULT_PANEL = 'home'
 
-export const findPanel = (id: string): PanelSpec =>
-  PANELS.find((panel) => panel.id === id) ?? PANELS[0]!
+export const findPanel = (id: string): PanelSpec => PANELS.find((panel) => panel.id === id) ?? PANELS[0]!
+
+export const panelsOf = (group: PanelGroup): PanelSpec[] => PANELS.filter((panel) => panel.group === group)
 
 export const homeCards = (): PanelSpec[] => PANELS.filter((panel) => panel.onHome !== false)

@@ -58,21 +58,31 @@ Overwritten files are backed up as `*.cheatui-backup-<timestamp>`.
 **`js/main.js` is never touched**: every game ships a different revision of it,
 and replacing it drops whatever that revision added.
 
-### Features
+### Screens
 
-| Screen | What it does |
+Organised by what you are trying to do, not by the engine's tables.
+
+| Screen | What it is for |
 |---|---|
-| Index | current gold, party, map and position; gold editing, no-clip, save/load/title |
-| Battle | encounter control, forced battle results, per-member HP/MP/TP |
-| Status | level, experience, parameters, god mode |
-| States | states and buffs per member, apply and clear |
-| Items | items, weapons and armors as tabs on one screen |
-| Variables | search, edit, and **value scan** |
-| Switches | on/off, bulk toggle over the current filter |
-| Locations | teleport and saved positions on one screen |
-| Settings | shortcuts, language and window options |
+| **Home** | The things you reach for most, as single buttons: fill gold, heal the party, god mode, walk through walls, stop random battles |
+| **Party** | One screen per character: HP/MP/TP, level, experience, parameters, god mode, states and buffs. Click a row to open the detail |
+| **Inventory** | Gold plus items, weapons and armors as tabs |
+| **Combat** | Stop encounters, force one, end the battle you are in, edit the enemies |
+| **Stuck?** | Record → try the thing that will not work → see exactly which switches and variables the game touched, and flip them |
+| **Variables** | Direct editing of variables and switches, with search and a value scan |
+| **Travel** | Places you have been (recorded automatically) and spots you saved. The full map list is tucked behind a disclosure |
+| **Settings** | Shortcut keys, language, window |
 
-**Search grammar**, shared by every list:
+#### Stuck on an event?
+
+A list of two thousand unnamed switches tells you nothing. **Stuck?** turns that
+around: it snapshots every switch and variable, you go and try the door that will
+not open, and it shows you only what the game changed in between. Flip one, put
+it back, try again.
+
+#### Search grammar
+
+Shared by every list:
 
 ```
 quest         name
@@ -84,10 +94,9 @@ quest flag    several terms, all must match
 on / off      boolean (switches)
 ```
 
-**Value scan** finds the variable behind a number on screen the way a memory
-scanner does: take a snapshot, play a little, then keep the entries that
-*changed*, *stayed*, *increased*, *decreased* or now *equal* a value. Two or
-three passes usually leave a single candidate.
+A **value scan** narrows variables down the way a memory scanner does: record,
+play a little, then keep the entries that *changed*, *stayed*, *increased*,
+*decreased* or now *equal* a value. Two or three passes usually leave one.
 
 Editing behaviour: **Enter, Tab and blur all commit**, Esc restores, the border
 flashes green on write, the original type is preserved (a numeric variable never
@@ -145,7 +154,8 @@ want to play do not need a toolchain.
 src/
   engine/     the only place RPG Maker globals are touched
   app/        window frame, menu, actions, hotkeys
-  features/   one folder per screen
+  features/   one folder per screen (home, party, inventory, combat,
+              unstuck, data, travel, settings)
   i18n/       en · ja · ko message catalogues
   shared/     ui kit, composables, pure helpers
   stores/     pinia: session view state, shortcut bindings
@@ -201,21 +211,30 @@ Windows 以外には同じ動きの Node 版がある。
 **`js/main.js` には触れない**。ゲームごとに版が違い、差し替えるとその版で追加された
 処理が消えるため。
 
-### 機能
+### 画面
 
-| 画面 | 内容 |
+エンジンの内部構造ではなく、「何をしたいか」で並べています。
+
+| 画面 | 何をする場所か |
 |---|---|
-| Index | 所持金・パーティ・マップ・座標の一覧、所持金編集、すり抜け、セーブ / ロード / タイトル |
-| Battle | エンカウント制御、戦闘の強制終了、メンバーごとの HP/MP/TP |
-| Status | レベル、経験値、能力値、無敵 |
-| States | メンバーごとの状態・バフの付与と解除 |
-| Items | アイテム・武器・防具をタブで 1 画面に |
-| Variables | 検索、値の編集、**値スキャン** |
-| Switches | on / off、絞り込み中の一括切り替え |
-| Locations | マップ移動と保存済み座標を 1 画面に |
-| Settings | ショートカット・言語・ウィンドウ設定 |
+| **ホーム** | よく使う操作をボタン 1 つで。所持金・全回復・無敵・すり抜け・ランダム戦闘の停止 |
+| **パーティ** | キャラごとに HP/MP/TP・レベル・経験値・能力値・無敵・ステートとバフ。行をクリックすると詳細が開く |
+| **もちもの** | 所持金と、アイテム・武器・防具のタブ |
+| **戦闘** | エンカウントの停止と強制、今の戦闘の終了、敵の編集 |
+| **進めない** | 記録 → 進まない行動を試す → その間にゲームが触ったスイッチと変数だけを表示し、そこで切り替える |
+| **変数** | 変数とスイッチの直接編集。検索と値スキャン付き |
+| **移動** | 行った場所（自動で記録）と保存した場所。全マップ一覧は折りたたみの中 |
+| **設定** | ショートカット・言語・ウィンドウ |
 
-全リスト共通の**検索記法**:
+#### イベントが進まないとき
+
+名前のないスイッチが 2000 個並んでいても何もわかりません。**進めない**画面は
+順序を逆にします。まず全スイッチと全変数を記録し、開かない扉を試してから戻ると、
+その間にゲームが変えた値だけが並びます。切り替えて、戻して、もう一度試す。
+
+#### 検索記法
+
+すべての一覧で共通です。
 
 ```
 quest         名前
@@ -227,14 +246,14 @@ quest flag    複数語は AND
 on / off      真偽値（スイッチ）
 ```
 
-**値スキャン**はメモリスキャナと同じ考え方で、画面に出ている数値の変数を探す。
-まず全値を記録し、少しゲームを進めてから *変わった* / *変わらない* / *増えた* /
-*減った* / *この値になった* もので絞り込む。2 〜 3 回で 1 件まで残ることが多い。
+**値スキャン**はメモリスキャナと同じ考え方で変数を絞り込みます。記録し、少し
+進めてから *変わった* / *変わらない* / *増えた* / *減った* / *この値* で残す。
+2 〜 3 回で 1 件になることが多いです。
 
 編集時の挙動: **Enter・Tab・フォーカス喪失のいずれでも確定**、Esc で取り消し、
-書き込むと枠が緑に光る。元の型は保たれる（数値の変数が文字列になることはない）。
-編集中の行は固定されるので、値で絞り込んでも入力中の行が消えない。
-表の列幅はヘッダの境界をドラッグして変更でき、ダブルクリックで戻る。
+書き込むと枠が緑に光ります。元の型は保たれ（数値の変数が文字列になりません）、
+編集中の行は固定されるので値で絞り込んでも消えません。表の列幅はヘッダの境界を
+ドラッグして変更でき、ダブルクリックで戻ります。
 
 ### 言語
 
@@ -285,7 +304,8 @@ npm run typecheck
 src/
   engine/     ツクールのグローバル変数に触れる唯一の場所
   app/        ウィンドウ枠・メニュー・動作・ホットキー
-  features/   画面ごとに 1 フォルダ
+  features/   画面ごとに 1 フォルダ（home, party, inventory, combat,
+              unstuck, data, travel, settings）
   i18n/       en · ja · ko のメッセージ
   shared/     UI 部品・composable・純粋な補助関数
   stores/     pinia。表示状態とショートカット割り当て
