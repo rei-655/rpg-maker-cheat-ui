@@ -38,7 +38,6 @@ const columns = computed<Column[]>(() => [
 
 const view = useSession().view('inventory', {
   tab: 'items',
-  perPage: 25,
   widths: { id: 64, name: 200, desc: 260 }
 })
 

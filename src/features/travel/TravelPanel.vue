@@ -45,9 +45,9 @@ const mapColumns = computed<Column[]>(() => [
 ])
 
 const session = useSession()
-const view = session.view('travel', { perPage: 15, widths: { id: 64, name: 200 } })
-const spotView = session.view('travel.spots', { sort: { key: 'name', desc: false }, perPage: 10 })
-const visitView = session.view('travel.visits', { sort: { key: 'mapName', desc: false }, perPage: 10 })
+const view = session.view('travel', { widths: { id: 64, name: 200 } })
+const spotView = session.view('travel.spots', { sort: { key: 'name', desc: false } })
+const visitView = session.view('travel.visits', { sort: { key: 'mapName', desc: false } })
 
 const maps = ref<MapEntry[]>([])
 const spots = ref<Bookmark[]>([])

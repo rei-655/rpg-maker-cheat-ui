@@ -24,7 +24,7 @@ const columns = computed<Column[]>(() => [
   { key: 'value', label: t('col.value'), align: 'right' }
 ])
 
-const view = useSession().view('data.variables', { perPage: 25, widths: { id: 64, name: 260 } })
+const view = useSession().view('data.variables', { widths: { id: 64, name: 260 } })
 const rows = ref<Row[]>([])
 const editing = ref(new Set<number>())
 const operand = ref('')
