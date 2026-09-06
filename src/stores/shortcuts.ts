@@ -1,0 +1,72 @@
+import { defineStore } from 'pinia'
+import { ACTIONS, findAction, type ActionSpec } from '@/app/actions'
+import { JsonStore } from '@/engine/storage'
+
+export interface Binding {
+  combo: string
+  slot: number
+}
+
+const store = new JsonStore('shortcuts.json')
+const KEY = 'bindings'
+
+function defaults(): Record<string, Binding> {
+  return Object.fromEntries(
+    ACTIONS.map((action) => [action.id, { combo: action.defaultCombo, slot: action.slot ?? 1 }])
+  )
+}
+
+export const useShortcuts = defineStore('shortcuts', {
+  state: () => ({
+    bindings: { ...defaults(), ...store.get<Record<string, Binding>>(KEY, {}) }
+  }),
+
+  getters: {
+    byCombo(state): Map<string, ActionSpec> {
+      const map = new Map<string, ActionSpec>()
+
+      for (const [id, binding] of Object.entries(state.bindings)) {
+        const action = findAction(id)
+        if (action && binding.combo) map.set(binding.combo, action)
+      }
+
+      return map
+    }
+  },
+
+  actions: {
+    binding(id: string): Binding {
+      this.bindings[id] ??= { combo: '', slot: 1 }
+      return this.bindings[id]!
+    },
+
+    resolve(combo: string): ActionSpec | undefined {
+      return this.byCombo.get(combo)
+    },
+
+    /** @returns 失敗時はエラーメッセージ、成功時は null。 */
+    rebind(id: string, combo: string): string | null {
+      const taken = combo ? this.byCombo.get(combo) : undefined
+
+      if (taken && taken.id !== id) return `이미 "${taken.label}" 에 배정된 키입니다`
+
+      this.binding(id).combo = combo
+      this.persist()
+      return null
+    },
+
+    setSlot(id: string, slot: number): void {
+      this.binding(id).slot = slot
+      this.persist()
+    },
+
+    restoreDefaults(): void {
+      this.bindings = defaults()
+      this.persist()
+    },
+
+    persist(): void {
+      store.set(KEY, this.bindings)
+    }
+  }
+})

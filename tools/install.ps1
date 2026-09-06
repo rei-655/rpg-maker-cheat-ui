@@ -1,0 +1,369 @@
+﻿<#
+    RPG ツクール MV / MZ のゲームにチート UI を導入・削除する。
+
+    Windows 標準の PowerShell だけで動く。Node.js は不要。
+    通常は install.bat から呼び出す。
+
+        powershell -ExecutionPolicy Bypass -File tools/install.ps1
+        powershell -ExecutionPolicy Bypass -File tools/install.ps1 -GamePath "D:/Games/Game"
+        powershell -ExecutionPolicy Bypass -File tools/install.ps1 -GamePath "..." -DryRun
+        powershell -ExecutionPolicy Bypass -File tools/install.ps1 -GamePath "..." -Uninstall
+
+    -GamePath を省くと自身の周辺からゲームを探し、
+    見つからなければ選択ダイアログを開く。
+
+    js/main.js には触れない。上書きするファイルは
+    .cheatui-backup-<timestamp> として控えを残す。
+#>
+[CmdletBinding()]
+param(
+    [Parameter(Position = 0)][string]$GamePath,
+    [switch]$DryRun,
+    [switch]$Uninstall,
+    [switch]$NoPrompt
+)
+
+$ErrorActionPreference = 'Stop'
+try { [Console]::OutputEncoding = [Text.Encoding]::UTF8 } catch {}
+
+$PLUGIN_NAME  = 'CheatUILoader'
+$ASSET_DIR    = 'cheat'
+$BACKUP_STAMP = Get-Date -Format 'yyyyMMddHHmmss'
+$PROJECT_ROOT = Split-Path -Parent $PSScriptRoot
+
+# 出力
+function Write-Step ([string]$verb, [string]$detail) { Write-Host ("  {0,-9}{1}" -f $verb, $detail) }
+function Write-Info ([string]$text) { Write-Host $text }
+function Write-Warn ([string]$text) { Write-Host $text -ForegroundColor Yellow }
+function Write-Fail ([string]$text) { Write-Host $text -ForegroundColor Red }
+function Write-Good ([string]$text) { Write-Host $text -ForegroundColor Green }
+
+# MV は www/ 配下、MZ はプロジェクト直下。
+function Get-GameLayout ([string]$contentRoot) {
+    if (-not (Test-Path -LiteralPath (Join-Path $contentRoot 'index.html') -PathType Leaf)) { return $null }
+
+    $js = Join-Path $contentRoot 'js'
+    if (-not (Test-Path -LiteralPath $js -PathType Container)) { return $null }
+
+    if (Test-Path -LiteralPath (Join-Path $js 'rmmz_core.js') -PathType Leaf) {
+        return @{ Engine = 'MZ'; ContentRoot = $contentRoot }
+    }
+    if (Test-Path -LiteralPath (Join-Path $js 'rpg_core.js') -PathType Leaf) {
+        return @{ Engine = 'MV'; ContentRoot = $contentRoot }
+    }
+    return $null
+}
+
+# ゲーム内のどのパスでも受け付ける。フォルダ / Game.exe / index.html / www など。
+function Resolve-GameLayout ([string]$path) {
+    if ([string]::IsNullOrWhiteSpace($path)) { return $null }
+    if (-not (Test-Path -LiteralPath $path)) { return $null }
+
+    $item    = Get-Item -LiteralPath $path
+    $current = if ($item.PSIsContainer) { $item.FullName } else { $item.DirectoryName }
+
+    for ($depth = 0; $depth -lt 4; $depth++) {
+        foreach ($candidate in @($current, (Join-Path $current 'www'))) {
+            $layout = Get-GameLayout $candidate
+            if ($layout) { return $layout }
+        }
+
+        $parent = Split-Path -Parent $current
+        if ([string]::IsNullOrEmpty($parent) -or $parent -eq $current) { break }
+        $current = $parent
+    }
+    return $null
+}
+
+# ゲームフォルダ内に展開されていれば、尋ねる必要はない。
+function Find-NearbyGame {
+    foreach ($start in @($PROJECT_ROOT, (Get-Location).Path)) {
+        $layout = Resolve-GameLayout $start
+        if ($layout) { return $layout }
+    }
+    return $null
+}
+
+function Select-GameWithDialog {
+    try {
+        Add-Type -AssemblyName System.Windows.Forms
+    } catch {
+        return $null
+    }
+
+    $dialog = New-Object System.Windows.Forms.OpenFileDialog
+    $dialog.Title  = 'game folder: pick Game.exe or index.html'
+    $dialog.Filter = 'RPG Maker (Game.exe;nw.exe;index.html)|Game.exe;nw.exe;index.html|All files (*.*)|*.*'
+    $dialog.CheckFileExists = $true
+
+    if ($dialog.ShowDialog() -ne [System.Windows.Forms.DialogResult]::OK) { return $null }
+    return $dialog.FileName
+}
+
+# 補助
+function Backup-File ([string]$path) {
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return $null }
+
+    $target = "$path.cheatui-backup-$BACKUP_STAMP"
+    if (-not $DryRun) { Copy-Item -LiteralPath $path -Destination $target -Force }
+    return (Split-Path -Leaf $target)
+}
+
+# plugins.js には日本語のプラグイン名が入る。BOM の有無もツクールの版で違うため、
+# 読み取ったままの形を保つ。
+function Read-TextFile ([string]$path) {
+    $bytes  = [IO.File]::ReadAllBytes($path)
+    $hasBom = $bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF
+    $offset = if ($hasBom) { 3 } else { 0 }
+
+    return @{
+        Text   = [Text.Encoding]::UTF8.GetString($bytes, $offset, $bytes.Length - $offset)
+        HasBom = $hasBom
+    }
+}
+
+function Write-TextFile ([string]$path, [string]$text, [bool]$hasBom) {
+    if ($DryRun) { return }
+    [IO.File]::WriteAllText($path, $text, (New-Object Text.UTF8Encoding($hasBom)))
+}
+
+function Get-PluginEntryJson {
+    # 版によらず同じ出力にするため手組みする（5.1 と 7 で ConvertTo-Json の
+    # エスケープが違う）。1 式で書くのは、PowerShell では ',' が '+' より強く
+    # 結合し、連結した配列が空白区切りの文字列に潰れるため。
+    return '{"name":"' + $PLUGIN_NAME + '","status":true,' +
+        '"description":"Loads the Cheat UI overlay (RPG Maker MV / MZ)",' +
+        '"parameters":{"assetDir":"' + $ASSET_DIR + '"}}'
+}
+
+# JSON を書き直さずテキストとして挿入するので、既存項目は 1 バイトも変わらない。
+# 更新時は自分の項目だけ丸ごと書き直し、古いパラメータを残さない。
+function Set-PluginEntry ([string]$text) {
+    $lines = $text -split "`n", 0
+
+    for ($i = 0; $i -lt $lines.Length; $i++) {
+        if ($lines[$i] -notmatch ('"name"\s*:\s*"' + [regex]::Escape($PLUGIN_NAME) + '"')) { continue }
+
+        $trailing = if ($lines[$i].TrimEnd() -match ',$') { ',' } else { '' }
+        $lines[$i] = (Get-PluginEntryJson) + $trailing
+        break
+    }
+
+    return ($lines -join "`n")
+}
+
+function Add-PluginEntry ([string]$text) {
+    $close = $text.LastIndexOf(']')
+    if ($close -lt 0) { throw 'no $plugins array found' }
+
+    $head = $text.Substring(0, $close).TrimEnd()
+    $last = if ($head.Length -gt 0) { $head[$head.Length - 1] } else { [char]0 }
+
+    $separator = if ($last -eq '[' -or $last -eq ',') { "`n" } else { ",`n" }
+
+    return $head + $separator + (Get-PluginEntryJson) + "`n" + $text.Substring($close)
+}
+
+function Remove-PluginEntry ([string]$text) {
+    $pattern = ',?\s*\{[^{}]*"name"\s*:\s*"' + [regex]::Escape($PLUGIN_NAME) + '"[^{}]*(?:\{[^{}]*\}[^{}]*)*\}'
+    $stripped = [regex]::Replace($text, $pattern, '')
+
+    # 先頭項目だった場合、'[' の直後にカンマが残る。
+    return [regex]::Replace($stripped, '\[\s*,', '[')
+}
+
+# 「チートランチャー」系プラグインは F9 で <CheatPath>/index.html を別ウィンドウに
+# 開く。そのフォルダが無いと ERR_FILE_NOT_FOUND が出るだけで、しかもツクール本体の
+# F9 デバッグ画面まで奪う。行き先が実在しないものだけ無効化する。
+function Disable-BrokenLaunchers ([string]$text, [string]$contentRoot) {
+    $lines    = $text -split "`n", 0
+    $disabled = @()
+
+    for ($i = 0; $i -lt $lines.Length; $i++) {
+        $line = $lines[$i]
+
+        if ($line -notmatch '"name"\s*:\s*"([^"]*)"') { continue }
+        $name = $Matches[1]
+
+        if ($name -eq $PLUGIN_NAME) { continue }
+        if ($name -notmatch '(?i)cheat' -or $name -notmatch '(?i)launch') { continue }
+        if ($line -notmatch '"status"\s*:\s*true') { continue }
+
+        $target = if ($line -match '"CheatPath"\s*:\s*"([^"]*)"') { $Matches[1] } else { './.cheat' }
+        $folder = Join-Path $contentRoot ($target -replace '^\./', '')
+
+        if (Test-Path -LiteralPath $folder -PathType Container) { continue }
+
+        $lines[$i] = $line -replace '"status"\s*:\s*true', '"status":false'
+        $disabled += "$name  (-> $target 없음)"
+    }
+
+    return @{ Text = ($lines -join "`n"); Disabled = $disabled }
+}
+
+function Assert-PluginsJs ([string]$text) {
+    $open  = $text.IndexOf('[')
+    $close = $text.LastIndexOf(']')
+    if ($open -lt 0 -or $close -lt $open) { throw 'no $plugins array found' }
+
+    $array = $text.Substring($open, $close - $open + 1)
+    $null = ConvertFrom-Json $array
+    return ([regex]::Matches($array, '"name"\s*:')).Count
+}
+
+# 対象の決定
+Write-Info ''
+Write-Info 'RPG Maker MV / MZ 치트 UI 설치'
+Write-Info '------------------------------'
+
+$layout = $null
+
+if ($GamePath) {
+    $layout = Resolve-GameLayout $GamePath
+    if (-not $layout) {
+        Write-Fail "RPG Maker 게임이 아니야: $GamePath"
+        Write-Info 'index.html 과 js/rmmz_core.js (MZ) 또는 js/rpg_core.js (MV) 가 있어야 해.'
+        exit 1
+    }
+} else {
+    $layout = Find-NearbyGame
+    if ($layout) {
+        Write-Info "게임을 찾았어: $($layout.ContentRoot)"
+    } elseif ($NoPrompt) {
+        Write-Fail '게임 폴더를 찾지 못했어. -GamePath 로 지정해줘.'
+        exit 1
+    } else {
+        Write-Info '게임 폴더를 찾지 못했어. 선택 창을 열게.'
+        $picked = Select-GameWithDialog
+
+        if (-not $picked) {
+            Write-Warn '취소했어.'
+            exit 1
+        }
+
+        $layout = Resolve-GameLayout $picked
+        if (-not $layout) {
+            Write-Fail "RPG Maker 게임이 아니야: $picked"
+            Write-Info 'Game.exe 나 index.html 이 있는 게임 폴더에서 골라줘.'
+            exit 1
+        }
+    }
+}
+
+$contentRoot  = $layout.ContentRoot
+$cheatTarget  = Join-Path $contentRoot $ASSET_DIR
+$pluginsDir   = Join-Path $contentRoot 'js\plugins'
+$pluginTarget = Join-Path $pluginsDir "$PLUGIN_NAME.js"
+$pluginsJs    = Join-Path $contentRoot 'js\plugins.js'
+
+Write-Info ''
+Write-Info "  엔진     $($layout.Engine)"
+Write-Info "  경로     $contentRoot"
+if ($DryRun) { Write-Warn '  모드     미리보기 (아무것도 쓰지 않음)' }
+Write-Info ''
+
+if (-not (Test-Path -LiteralPath $pluginsJs -PathType Leaf)) {
+    Write-Fail "js/plugins.js 가 없어서 플러그인을 등록할 수 없어: $pluginsJs"
+    exit 1
+}
+
+$pluginsFile = Read-TextFile $pluginsJs
+$before      = Assert-PluginsJs $pluginsFile.Text
+$registered  = $pluginsFile.Text -match ('"' + [regex]::Escape($PLUGIN_NAME) + '"')
+
+# コピーの前に plugins.js の最終形を決める。
+# 書けない内容だったときに中途半端な導入を残さないため。
+if ($Uninstall) {
+    $planned = Remove-PluginEntry $pluginsFile.Text
+    $launcher = @{ Disabled = @() }
+} else {
+    $planned = if ($registered) { Set-PluginEntry $pluginsFile.Text } else { Add-PluginEntry $pluginsFile.Text }
+    $launcher = Disable-BrokenLaunchers $planned $contentRoot
+    $planned = $launcher.Text
+}
+
+$after = Assert-PluginsJs $planned
+
+# 削除
+if ($Uninstall) {
+    if (Test-Path -LiteralPath $cheatTarget -PathType Container) {
+        Write-Step 'delete' $cheatTarget
+        if (-not $DryRun) { Remove-Item -LiteralPath $cheatTarget -Recurse -Force }
+    }
+
+    if (Test-Path -LiteralPath $pluginTarget -PathType Leaf) {
+        Write-Step 'delete' $pluginTarget
+        if (-not $DryRun) { Remove-Item -LiteralPath $pluginTarget -Force }
+    }
+
+    if ($registered) {
+        $saved = Backup-File $pluginsJs
+
+        Write-Step 'unlink' "$pluginsJs  (백업: $saved)"
+        Write-TextFile $pluginsJs $planned $pluginsFile.HasBom
+    }
+
+    Write-Info ''
+    Write-Info "  플러그인 $before 개 -> $after 개"
+    Write-Info ''
+    if ($DryRun) {
+        Write-Good '미리보기 끝 — 아무것도 지우지 않았어.'
+    } else {
+        Write-Good '제거 완료. 백업 파일(.cheatui-backup-*)은 그대로 뒀어.'
+    }
+    exit 0
+}
+
+# 導入
+$cheatSource = Join-Path $PROJECT_ROOT 'dist'
+if (-not (Test-Path -LiteralPath $cheatSource -PathType Container)) {
+    Write-Fail "빌드 결과가 없어: $cheatSource"
+    Write-Info 'npm install && npm run build 를 먼저 실행해줘.'
+    exit 1
+}
+
+if (Test-Path -LiteralPath $cheatTarget) {
+    Write-Step 'replace' $cheatTarget
+    if (-not $DryRun) { Remove-Item -LiteralPath $cheatTarget -Recurse -Force }
+} else {
+    Write-Step 'create' $cheatTarget
+}
+if (-not $DryRun) { Copy-Item -LiteralPath $cheatSource -Destination $cheatTarget -Recurse -Force }
+
+if (-not (Test-Path -LiteralPath $pluginsDir -PathType Container) -and -not $DryRun) {
+    New-Item -ItemType Directory -Path $pluginsDir -Force | Out-Null
+}
+
+$pluginBackup = Backup-File $pluginTarget
+Write-Step $(if ($pluginBackup) { 'replace' } else { 'create' }) $pluginTarget
+if (-not $DryRun) {
+    Copy-Item -LiteralPath (Join-Path $PROJECT_ROOT "plugin\$PLUGIN_NAME.js") -Destination $pluginTarget -Force
+}
+
+if ($planned -eq $pluginsFile.Text) {
+    Write-Step 'skip' "$pluginsJs (변경 없음)"
+} else {
+    $saved = Backup-File $pluginsJs
+
+    $verb = if ($registered) { 'update' } else { 'register' }
+    Write-Step $verb "$pluginsJs  (백업: $saved)"
+
+    # 行き先の無いチートランチャーが同梱されていることがある。
+    foreach ($name in $launcher.Disabled) {
+        Write-Step 'disable' $name
+    }
+
+    Write-TextFile $pluginsJs $planned $pluginsFile.HasBom
+}
+
+Write-Info ''
+Write-Info "  플러그인 $before 개 -> $after 개 (기존 항목은 건드리지 않음)"
+Write-Info '  js/main.js 는 그대로'
+Write-Info ''
+
+if ($DryRun) {
+    Write-Good '미리보기 끝 — 아무것도 쓰지 않았어.'
+} else {
+    Write-Good '설치 완료. 게임을 켜고 Ctrl+C 를 눌러.'
+}
+if ($pluginBackup) { Write-Info "이전 플러그인은 $pluginBackup 으로 저장했어." }
