@@ -13,20 +13,21 @@ import { addCurrent, load, remove, rename, type Bookmark } from './bookmarks'
 import { confirm } from '@/shared/composables/useConfirm'
 import { toast } from '@/shared/composables/useToast'
 import { useSession } from '@/stores/session'
+import { t } from '@/i18n'
 
-const savedColumns: Column[] = [
-  { key: 'name', label: '이름' },
-  { key: 'mapName', label: '맵' },
-  { key: 'coord', label: '맵 · 좌표', width: 150, sortable: false },
+const savedColumns = computed<Column[]>(() => [
+  { key: 'name', label: t('col.name') },
+  { key: 'mapName', label: t('col.map') },
+  { key: 'coord', label: t('col.coord'), width: 150, sortable: false },
   { key: 'actions', label: '', width: 130, sortable: false }
-]
+])
 
-const mapColumnsAll: Column[] = [
-  { key: 'id', label: 'ID', width: 64, align: 'right' },
-  { key: 'name', label: '이름', width: 200 },
-  { key: 'path', label: '경로' },
+const mapColumnsAll = computed<Column[]>(() => [
+  { key: 'id', label: t('col.id'), width: 64, align: 'right' },
+  { key: 'name', label: t('col.name'), width: 200 },
+  { key: 'path', label: t('col.path') },
   { key: 'actions', label: '', width: 80, sortable: false }
-]
+])
 
 const session = useSession()
 const view = session.view('locations', { perPage: 15, widths: { id: 64, name: 200 } })
@@ -43,7 +44,7 @@ const target = reactive({ x: '0', y: '0' })
 const current = reactive({ mapId: 0, path: '', x: 0, y: 0 })
 
 const mapColumns = computed(() =>
-  view.flags.hidePath ? mapColumnsAll.filter((column) => column.key !== 'path') : mapColumnsAll
+  view.flags.hidePath ? mapColumnsAll.value.filter((column) => column.key !== 'path') : mapColumnsAll.value
 )
 
 const shownMaps = computed(() => {
@@ -104,14 +105,14 @@ function onAliasKeydown(event: KeyboardEvent): void {
 function addBookmark(): void {
   bookmarks.value = addCurrent(bookmarks.value, alias.value)
   alias.value = ''
-  toast.success('현재 위치를 저장했다')
+  toast.success(t('locations.savedToast'))
 }
 
 async function removeBookmark(entry: Bookmark): Promise<void> {
   const ok = await confirm({
-    title: '저장 위치 삭제',
-    message: `"${entry.name || '(이름 없음)'}" 을 삭제한다.`,
-    confirmText: '삭제',
+    title: t('locations.deleteTitle'),
+    message: t('locations.deleteMessage', { name: entry.name || t('common.unnamed') }),
+    confirmText: t('common.delete'),
     danger: true
   })
 
@@ -124,19 +125,19 @@ async function removeBookmark(entry: Bookmark): Promise<void> {
     <div class="strip">
       <span class="status">
         <span class="dot dot-ok" />
-        현재 <b>{{ current.path || '알 수 없음' }}</b>
+        {{ t('locations.current') }} <b>{{ current.path || t('common.unknown') }}</b>
         <span class="mono faint">({{ current.x }}, {{ current.y }})</span>
       </span>
       <span class="spacer" />
       <span class="row">
-        <span class="field__label">이동 좌표</span>
+        <span class="field__label">{{ t('locations.targetCoord') }}</span>
         <ValueInput :value="target.x" :width="64" @commit="target.x = $event" />
         <ValueInput :value="target.y" :width="64" @commit="target.y = $event" />
-        <button class="btn btn--sm btn--icon" title="현재 좌표 넣기" @click="useCurrentCoord">
+        <button class="btn btn--sm btn--icon" :title="t('locations.useCurrent')" @click="useCurrentCoord">
           <AppIcon name="crosshair" :size="13" />
         </button>
       </span>
-      <button class="btn btn--sm btn--icon" title="다시 읽기" @click="refresh">
+      <button class="btn btn--sm btn--icon" :title="t('common.refresh')" @click="refresh">
         <AppIcon name="refresh" :size="13" />
       </button>
     </div>
@@ -144,17 +145,17 @@ async function removeBookmark(entry: Bookmark): Promise<void> {
     <div class="content__scroll">
       <div class="section">
         <div class="section__head">
-          <span>저장한 위치</span><span class="tab__count">{{ bookmarks.length }}</span>
+          <span>{{ t('locations.saved') }}</span><span class="tab__count">{{ bookmarks.length }}</span>
           <span class="spacer" />
           <input
             v-model="alias"
             class="input input--text"
             style="width: 160px"
-            placeholder="이름 (생략 가능)"
+            :placeholder="t('locations.aliasPlaceholder')"
             @keydown="onAliasKeydown"
           />
           <button class="btn btn--sm btn--primary" @click="addBookmark">
-            <AppIcon name="plus" :size="13" />현재 위치 저장
+            <AppIcon name="plus" :size="13" />{{ t('locations.saveCurrent') }}
           </button>
         </div>
         <div class="section__body">
@@ -166,13 +167,13 @@ async function removeBookmark(entry: Bookmark): Promise<void> {
             :columns="savedColumns"
             :rows="savedRows"
             row-key="key"
-            empty-text="현재 위치를 저장하면 여기에 표시됩니다."
+            :empty-text="t('locations.emptySaved')"
           >
             <template #name="{ row }">
               <ValueInput
                 :value="row.name"
                 text
-                title="이름을 고치고 Enter"
+                :title="t('locations.renameHint')"
                 @commit="bookmarks = rename(bookmarks, row.key, $event)"
               />
             </template>
@@ -181,8 +182,8 @@ async function removeBookmark(entry: Bookmark): Promise<void> {
             </template>
             <template #actions="{ row }">
               <div class="btn-group">
-                <button class="btn btn--sm" title="이 위치로 이동" @click="recall(row)">이동</button>
-                <button class="btn btn--sm btn--icon btn--danger" title="삭제" @click="removeBookmark(row)">
+                <button class="btn btn--sm" :title="t('locations.recall')" @click="recall(row)">{{ t('locations.recall') }}</button>
+                <button class="btn btn--sm btn--icon btn--danger" :title="t('common.delete')" @click="removeBookmark(row)">
                   <AppIcon name="trash" :size="13" />
                 </button>
               </div>
@@ -193,14 +194,14 @@ async function removeBookmark(entry: Bookmark): Promise<void> {
 
       <div class="section">
         <div class="section__head">
-          <span>맵</span>
+          <span>{{ t('locations.maps') }}</span>
           <span class="spacer" />
-          <CheckBox v-model="view.flags.hidePath" label="경로 숨기기" />
+          <CheckBox v-model="view.flags.hidePath" :label="t('locations.hidePath')" />
         </div>
         <div class="section__body">
           <SearchBox
             v-model="view.search"
-            placeholder="맵 이름 · 경로 · #12"
+            :placeholder="t('locations.searchPlaceholder')"
             :shown="shownMaps.length"
             :total="maps.length"
           />
@@ -213,7 +214,7 @@ async function removeBookmark(entry: Bookmark): Promise<void> {
             style="margin-top: 8px"
             :columns="mapColumns"
             :rows="shownMaps"
-            empty-text="조건에 맞는 맵이 없습니다."
+            :empty-text="t('locations.emptyMaps')"
           >
             <template #id="{ row }">
               <span class="cell-id">{{ row.id }}</span>
@@ -221,15 +222,15 @@ async function removeBookmark(entry: Bookmark): Promise<void> {
             <template #name="{ row }">
               <span :class="{ status: row.id === current.mapId }">
                 <span v-if="row.id === current.mapId" class="dot dot-ok" />
-                {{ row.name || '(이름 없음)' }}
+                {{ row.name || t('common.unnamed') }}
               </span>
             </template>
             <template #path="{ row }">
               <span class="faint">{{ row.path }}</span>
             </template>
             <template #actions="{ row }">
-              <button class="btn btn--sm" :title="`(${target.x}, ${target.y}) 로 이동`" @click="warp(row)">
-                이동
+              <button class="btn btn--sm" :title="t('locations.warpTitle', { x: target.x, y: target.y })" @click="warp(row)">
+                {{ t('common.move') }}
               </button>
             </template>
           </DataTable>

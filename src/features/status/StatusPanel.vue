@@ -8,6 +8,7 @@ import { paramNames, partyMembers } from '@/engine/globals'
 import type { Actor } from '@/engine/types'
 import { clamp, toInt } from '@/shared/lib/coerce'
 import { useSession } from '@/stores/session'
+import { t } from '@/i18n'
 
 interface ActorView {
   id: number
@@ -20,11 +21,11 @@ interface ActorView {
   actor: Actor
 }
 
-const columns: Column[] = [
+const columns = computed<Column[]>(() => [
   { key: 'paramId', label: '#', width: 64, align: 'right' },
-  { key: 'name', label: '능력치', width: 220 },
-  { key: 'value', label: '값', align: 'right' }
-]
+  { key: 'name', label: t('col.param'), width: 220 },
+  { key: 'value', label: t('col.value'), align: 'right' }
+])
 
 const view = useSession().view('status', {
   sort: { key: 'paramId', desc: false },
@@ -119,40 +120,40 @@ function toggleGodMode(): void {
     <template v-if="selected">
       <div class="strip">
         <div class="stat">
-          <div class="stat__label">Level</div>
+          <div class="stat__label">{{ t('status.level') }}</div>
           <div class="stat__value">{{ selected.level }}</div>
         </div>
         <div class="stat">
-          <div class="stat__label">Exp</div>
+          <div class="stat__label">{{ t('status.exp') }}</div>
           <div class="stat__value">{{ selected.exp.toLocaleString() }}</div>
         </div>
         <span class="spacer" />
         <span class="status">
           <span class="dot" :class="selected.godMode ? 'dot-ok' : 'dot-muted'" />
-          무적 {{ selected.godMode ? 'ON' : 'OFF' }}
+          {{ t('status.god') }} {{ t(selected.godMode ? 'common.on' : 'common.off') }}
         </span>
         <button class="btn btn--sm" :class="selected.godMode ? 'btn--danger' : 'btn--primary'" @click="toggleGodMode">
-          {{ selected.godMode ? '해제' : '무적' }}
+          {{ t(selected.godMode ? 'status.godDisable' : 'status.godEnable') }}
         </button>
-        <button class="btn btn--sm btn--icon" title="다시 읽기" @click="refresh">
+        <button class="btn btn--sm btn--icon" :title="t('common.refresh')" @click="refresh">
           <AppIcon name="refresh" :size="13" />
         </button>
       </div>
 
       <div class="content__scroll">
         <div class="section">
-          <div class="section__head">레벨 · 경험치</div>
+          <div class="section__head">{{ t('status.levelExp') }}</div>
           <div class="section__body row-wrap">
             <div class="field">
-              <span class="field__label">Level (1 - {{ selected.maxLevel }})</span>
+              <span class="field__label">{{ t('status.levelRange', { max: selected.maxLevel }) }}</span>
               <ValueInput :value="selected.level" :width="120" @commit="setLevel" />
             </div>
             <div class="field">
-              <span class="field__label">Exp</span>
+              <span class="field__label">{{ t('status.exp') }}</span>
               <ValueInput :value="selected.exp" :width="160" @commit="setExp" />
             </div>
             <div class="field">
-              <span class="field__label">한 번에</span>
+              <span class="field__label">{{ t('status.quick') }}</span>
               <div class="btn-group">
                 <button class="btn" @click="setLevel(selected.level + 1)">Lv +1</button>
                 <button class="btn" @click="setLevel(selected.maxLevel)">Lv Max</button>
@@ -162,7 +163,7 @@ function toggleGodMode(): void {
         </div>
 
         <div class="section">
-          <div class="section__head">능력치</div>
+          <div class="section__head">{{ t('status.params') }}</div>
           <div class="section__body">
             <DataTable
               v-model:sort="view.sort"
@@ -172,7 +173,7 @@ function toggleGodMode(): void {
               :columns="columns"
               :rows="params"
               row-key="paramId"
-              empty-text="능력치를 읽지 못했습니다."
+              :empty-text="t('status.emptyParams')"
             >
               <template #value="{ row }">
                 <ValueInput :value="row.value" :width="110" @commit="setParam(row.paramId, $event)" />
@@ -184,7 +185,7 @@ function toggleGodMode(): void {
     </template>
 
     <div v-else class="content__scroll">
-      <div class="empty">파티에 멤버가 없습니다.</div>
+      <div class="empty">{{ t('status.noParty') }}</div>
     </div>
   </div>
 </template>

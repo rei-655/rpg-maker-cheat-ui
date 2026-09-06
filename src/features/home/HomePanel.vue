@@ -8,6 +8,7 @@ import { MAX_GOLD, movement, scenes, wallet } from '@/engine/cheats'
 import { currentMapId, has, partyMembers, player } from '@/engine/globals'
 import { toInt } from '@/shared/lib/coerce'
 import { useSession } from '@/stores/session'
+import { t } from '@/i18n'
 
 const session = useSession()
 const cards = homeCards()
@@ -41,61 +42,61 @@ function toggleNoClip(): void {
   <div class="content">
     <div class="strip">
       <div class="stat">
-        <div class="stat__label">Gold</div>
+        <div class="stat__label">{{ t('home.gold') }}</div>
         <div class="stat__value">{{ snapshot.gold.toLocaleString() }}</div>
       </div>
       <div class="stat">
-        <div class="stat__label">Party</div>
+        <div class="stat__label">{{ t('home.party') }}</div>
         <div class="stat__value">{{ snapshot.party }}</div>
       </div>
       <div class="stat">
-        <div class="stat__label">Map</div>
+        <div class="stat__label">{{ t('home.map') }}</div>
         <div class="stat__value">{{ snapshot.mapId }}</div>
       </div>
       <div class="stat">
-        <div class="stat__label">Pos</div>
+        <div class="stat__label">{{ t('home.pos') }}</div>
         <div class="stat__value">{{ snapshot.x }}, {{ snapshot.y }}</div>
       </div>
       <span class="spacer" />
       <span class="status">
         <span class="dot" :class="snapshot.noClip ? 'dot-warn' : 'dot-muted'" />
-        벽 통과 {{ snapshot.noClip ? 'ON' : 'OFF' }}
+        {{ t('home.noClip') }} {{ t(snapshot.noClip ? 'common.on' : 'common.off') }}
       </span>
-      <button class="btn btn--sm btn--icon" title="다시 읽기" @click="refresh">
+      <button class="btn btn--sm btn--icon" :title="t('common.refresh')" @click="refresh">
         <AppIcon name="refresh" :size="13" />
       </button>
     </div>
 
     <div class="content__scroll">
       <div class="section">
-        <div class="section__head">빠른 조작</div>
+        <div class="section__head">{{ t('home.quickActions') }}</div>
         <div class="section__body row-wrap">
           <div class="field">
-            <span class="field__label">Gold</span>
+            <span class="field__label">{{ t('home.gold') }}</span>
             <div class="row">
-              <ValueInput :value="snapshot.gold" :width="140" title="Enter 로 반영" @commit="setGold" />
-              <button class="btn" title="최대치" @click="setGold(MAX_GOLD)">Max</button>
+              <ValueInput :value="snapshot.gold" :width="140" :title="t('common.commitHint')" @commit="setGold" />
+              <button class="btn" :title="t('common.max')" @click="setGold(MAX_GOLD)">Max</button>
             </div>
           </div>
 
           <div class="field">
-            <span class="field__label">이동</span>
-            <CheckBox v-model="snapshot.noClip" label="벽 통과" @update:model-value="toggleNoClip" />
+            <span class="field__label">{{ t('home.movement') }}</span>
+            <CheckBox v-model="snapshot.noClip" :label="t('home.noClip')" @update:model-value="toggleNoClip" />
           </div>
 
           <div class="field grow">
-            <span class="field__label">화면</span>
+            <span class="field__label">{{ t('home.screen') }}</span>
             <div class="btn-group">
-              <button class="btn" @click="scenes.toggleSave()"><AppIcon name="save" :size="13" />저장</button>
-              <button class="btn" @click="scenes.toggleLoad()"><AppIcon name="load" :size="13" />불러오기</button>
-              <button class="btn" @click="scenes.toTitle()"><AppIcon name="home" :size="13" />타이틀</button>
+              <button class="btn" @click="scenes.toggleSave()"><AppIcon name="save" :size="13" />{{ t('home.save') }}</button>
+              <button class="btn" @click="scenes.toggleLoad()"><AppIcon name="load" :size="13" />{{ t('home.load') }}</button>
+              <button class="btn" @click="scenes.toTitle()"><AppIcon name="home" :size="13" />{{ t('home.title') }}</button>
             </div>
           </div>
         </div>
       </div>
 
       <div class="section">
-        <div class="section__head">바로가기</div>
+        <div class="section__head">{{ t('home.links') }}</div>
         <div class="section__body">
           <div class="hub">
             <button
@@ -107,7 +108,7 @@ function toggleNoClip(): void {
               <AppIcon :name="card.icon" :size="17" />
               <span>
                 <span class="hub__name">{{ card.label }}</span>
-                <span class="hub__desc">{{ card.hint }}</span>
+                <span class="hub__desc">{{ t(card.hintKey) }}</span>
               </span>
             </button>
           </div>

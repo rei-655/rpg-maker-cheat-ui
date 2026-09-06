@@ -149,7 +149,7 @@ function withPluginEntry (text) {
 function pluginEntryJson () {
     return '{"name":"' + PLUGIN_NAME + '","status":true,'
         + '"description":"Loads the Cheat UI overlay (RPG Maker MV / MZ)",'
-        + '"parameters":{"assetDir":"' + ASSET_DIR + '"}}'
+        + '"parameters":{"assetDir":"' + ASSET_DIR + '","defaultLocale":"auto"}}'
 }
 
 /** 更新時は自分の項目を丸ごと書き直し、古いパラメータを残さない。 */

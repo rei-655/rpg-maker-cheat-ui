@@ -133,7 +133,7 @@ function Get-PluginEntryJson {
     # 結合し、連結した配列が空白区切りの文字列に潰れるため。
     return '{"name":"' + $PLUGIN_NAME + '","status":true,' +
         '"description":"Loads the Cheat UI overlay (RPG Maker MV / MZ)",' +
-        '"parameters":{"assetDir":"' + $ASSET_DIR + '"}}'
+        '"parameters":{"assetDir":"' + $ASSET_DIR + '","defaultLocale":"auto"}}'
 }
 
 # JSON を書き直さずテキストとして挿入するので、既存項目は 1 バイトも変わらない。

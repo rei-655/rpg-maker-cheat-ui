@@ -88,7 +88,7 @@ describe('installer', () => {
 
     expect(list).toHaveLength(3)
     expect(list[2].name).toBe('CheatUILoader')
-    expect(list[2].parameters.assetDir).toBe('cheat')
+    expect(list[2].parameters).toEqual({ assetDir: 'cheat', defaultLocale: 'auto' })
     expect(readPlugins(game)).toContain(OTHER)
     expect(readPlugins(game).startsWith('//=====')).toBe(true)
   })
@@ -147,7 +147,7 @@ describe('installer', () => {
     const ours = entries(game).filter((entry) => entry.name === 'CheatUILoader')
 
     expect(ours).toHaveLength(1)
-    expect(ours[0].parameters).toEqual({ assetDir: 'cheat' })
+    expect(ours[0].parameters).toEqual({ assetDir: 'cheat', defaultLocale: 'auto' })
   })
 
   it('writes nothing on a dry run', () => {

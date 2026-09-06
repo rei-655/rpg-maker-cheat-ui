@@ -70,7 +70,7 @@ and replacing it drops whatever that revision added.
 | Variables | search, edit, and **value scan** |
 | Switches | on/off, bulk toggle over the current filter |
 | Locations | teleport and saved positions on one screen |
-| Settings | shortcuts and window options |
+| Settings | shortcuts, language and window options |
 
 **Search grammar**, shared by every list:
 
@@ -94,6 +94,26 @@ flashes green on write, the original type is preserved (a numeric variable never
 turns into a string), and the row being edited is pinned so narrowing by value
 cannot pull it out from under the cursor. Table columns are resizable — drag the
 header divider, double-click to reset.
+
+### Language
+
+English, 日本語 and 한국어. Switch under **Settings → General**; the choice is
+written to `cheat-settings/ui.json` next to the game and survives restarts.
+
+```json
+{ "locale": "ja" }
+```
+
+The **default** — what a fresh install shows before anyone picks — comes from the
+plugin parameter `defaultLocale` in the plugin manager:
+
+| `defaultLocale` | Result |
+|---|---|
+| `auto` (default) | follows the game's display language, falling back to English |
+| `en` / `ja` / `ko` | always starts in that language |
+
+Order of precedence: saved choice → `defaultLocale` → display language → English.
+Deleting `ui.json` returns everything to the default.
 
 ### It does not disturb the game
 
@@ -126,6 +146,7 @@ src/
   engine/     the only place RPG Maker globals are touched
   app/        window frame, menu, actions, hotkeys
   features/   one folder per screen
+  i18n/       en · ja · ko message catalogues
   shared/     ui kit, composables, pure helpers
   stores/     pinia: session view state, shortcut bindings
 plugin/       the RPG Maker plugin that loads the bundle
@@ -192,7 +213,7 @@ Windows 以外には同じ動きの Node 版がある。
 | Variables | 検索、値の編集、**値スキャン** |
 | Switches | on / off、絞り込み中の一括切り替え |
 | Locations | マップ移動と保存済み座標を 1 画面に |
-| Settings | ショートカットとウィンドウ設定 |
+| Settings | ショートカット・言語・ウィンドウ設定 |
 
 全リスト共通の**検索記法**:
 
@@ -214,6 +235,26 @@ on / off      真偽値（スイッチ）
 書き込むと枠が緑に光る。元の型は保たれる（数値の変数が文字列になることはない）。
 編集中の行は固定されるので、値で絞り込んでも入力中の行が消えない。
 表の列幅はヘッダの境界をドラッグして変更でき、ダブルクリックで戻る。
+
+### 言語
+
+English・日本語・한국어 に対応。**Settings → 一般**で切り替えると、ゲームの隣の
+`cheat-settings/ui.json` に保存され、再起動しても残る。
+
+```json
+{ "locale": "ja" }
+```
+
+**既定値**（まだ誰も選んでいないときに表示される言語）はプラグイン管理画面の
+`defaultLocale` で決める。
+
+| `defaultLocale` | 動作 |
+|---|---|
+| `auto`（既定） | ゲームの表示言語に合わせる。判別できなければ英語 |
+| `en` / `ja` / `ko` | 常にその言語で開く |
+
+優先順位は 保存された選択 → `defaultLocale` → 表示言語 → 英語。
+`ui.json` を削除すれば既定値に戻る。
 
 ### ゲームを壊さない
 
@@ -245,6 +286,7 @@ src/
   engine/     ツクールのグローバル変数に触れる唯一の場所
   app/        ウィンドウ枠・メニュー・動作・ホットキー
   features/   画面ごとに 1 フォルダ
+  i18n/       en · ja · ko のメッセージ
   shared/     UI 部品・composable・純粋な補助関数
   stores/     pinia。表示状態とショートカット割り当て
 plugin/       バンドルを読み込むツクールプラグイン

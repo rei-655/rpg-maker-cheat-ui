@@ -1,3 +1,5 @@
+import { t } from '@/i18n'
+
 const MODIFIERS = ['ctrl', 'alt', 'shift', 'meta'] as const
 
 const DISPLAY: Record<string, string> = {
@@ -21,7 +23,7 @@ export function isModifierKey(code: string): boolean {
 }
 
 export function formatCombo(combo: string): string {
-  if (!combo) return '미지정'
+  if (!combo) return t('keys.unassigned')
 
   return combo
     .split('+')

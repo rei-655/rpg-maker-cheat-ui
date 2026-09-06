@@ -8,26 +8,23 @@ import DataTable, { type Column } from '@/shared/ui/DataTable.vue'
 import KeyCapture from './KeyCapture.vue'
 import { ACTIONS } from '@/app/actions'
 import { formatCombo } from '@/app/keys'
-import { engineName } from '@/engine/engine'
-import { settingsDir } from '@/engine/engine'
+import { engineName, settingsFile } from '@/engine/engine'
 import { matches, parseQuery } from '@/shared/lib/query'
 import { toInt } from '@/shared/lib/coerce'
 import { confirm } from '@/shared/composables/useConfirm'
 import { toast } from '@/shared/composables/useToast'
 import { useSession } from '@/stores/session'
 import { useShortcuts } from '@/stores/shortcuts'
+import { LOCALES, locale, setLocale, t, type Locale } from '@/i18n'
 
-const TABS = [
-  { key: 'shortcuts', label: '단축키' },
-  { key: 'window', label: '창' }
-] as const
+const TABS = ['shortcuts', 'general'] as const
 
-const columns: Column[] = [
-  { key: 'label', label: '동작', width: 240 },
-  { key: 'combo', label: '단축키', width: 190 },
-  { key: 'slot', label: '슬롯', width: 90, align: 'right' },
+const columns = computed<Column[]>(() => [
+  { key: 'label', label: t('col.action'), width: 240 },
+  { key: 'combo', label: t('col.combo'), width: 190 },
+  { key: 'slot', label: t('col.slot'), width: 90, align: 'right' },
   { key: 'hint', label: '' }
-]
+])
 
 const session = useSession()
 const shortcuts = useShortcuts()
@@ -40,8 +37,8 @@ const rows = computed(() => {
 
   return ACTIONS.map((action) => ({
     id: action.id,
-    label: action.label,
-    hint: action.hint ?? '',
+    label: t(action.labelKey),
+    hint: action.hintKey ? t(action.hintKey) : '',
     slot: action.slot === undefined ? null : shortcuts.binding(action.id).slot,
     combo: shortcuts.binding(action.id).combo
   })).filter(
@@ -63,15 +60,15 @@ function setSlot(id: string, raw: string): void {
 
 async function restore(): Promise<void> {
   const ok = await confirm({
-    title: '단축키 초기화',
-    message: '모든 단축키를 기본값으로 되돌린다.',
-    confirmText: '초기화',
+    title: t('settings.restoreTitle'),
+    message: t('settings.restoreMessage'),
+    confirmText: t('settings.restoreConfirm'),
     danger: true
   })
 
   if (ok) {
     shortcuts.restoreDefaults()
-    toast.success('단축키를 초기화했다')
+    toast.success(t('settings.restoredToast'))
   }
 }
 </script>
@@ -81,30 +78,35 @@ async function restore(): Promise<void> {
     <div class="tabs">
       <button
         v-for="tab in TABS"
-        :key="tab.key"
+        :key="tab"
         class="tab"
-        :class="{ 'tab--active': tab.key === view.tab }"
-        @click="view.tab = tab.key"
+        :class="{ 'tab--active': tab === view.tab }"
+        @click="view.tab = tab"
       >
-        {{ tab.label }}
+        {{ t(`settings.${tab}`) }}
       </button>
     </div>
 
-    <template v-if="view.tab !== 'window'">
+    <template v-if="view.tab !== 'general'">
       <div class="toolbar">
-        <SearchBox v-model="search" placeholder="동작 이름 · 키" :shown="rows.length" :total="ACTIONS.length" />
+        <SearchBox
+          v-model="search"
+          :placeholder="t('settings.searchPlaceholder')"
+          :shown="rows.length"
+          :total="ACTIONS.length"
+        />
         <div class="chips">
           <button
             class="chip"
             :class="{ 'chip--active': view.flags.assignedOnly }"
             @click="view.flags.assignedOnly = !view.flags.assignedOnly"
           >
-            배정된 것만
+            {{ t('settings.assignedOnly') }}
           </button>
         </div>
         <span class="spacer" />
         <button class="btn btn--sm" @click="restore">
-          <AppIcon name="reset" :size="13" />기본값
+          <AppIcon name="reset" :size="13" />{{ t('settings.defaults') }}
         </button>
       </div>
 
@@ -116,7 +118,7 @@ async function restore(): Promise<void> {
           v-model:widths="view.widths"
           :columns="columns"
           :rows="rows"
-          empty-text="조건에 맞는 동작이 없습니다."
+          :empty-text="t('settings.emptyActions')"
         >
           <template #combo="{ row }">
             <KeyCapture :combo="row.combo" @change="rebind(row.id, $event)" />
@@ -134,21 +136,42 @@ async function restore(): Promise<void> {
 
     <div v-else class="content__scroll">
       <div class="section">
-        <div class="section__head">창</div>
+        <div class="section__head">{{ t('settings.language') }}</div>
+        <div class="section__body">
+          <div class="chips">
+            <button
+              v-for="option in LOCALES"
+              :key="option.code"
+              class="chip"
+              :class="{ 'chip--active': option.code === locale }"
+              @click="setLocale(option.code as Locale)"
+            >
+              {{ option.label }}
+            </button>
+          </div>
+          <div class="hint" style="margin-top: 8px">
+            {{ t('settings.languageHint', { file: settingsFile('ui.json') }) }}
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section__head">{{ t('settings.window') }}</div>
         <div class="section__body row-wrap">
-          <CheckBox v-model="session.dimmed" label="흐리게 (마우스를 올리면 선명)" />
+          <CheckBox v-model="session.dimmed" :label="t('settings.dim')" />
           <button class="btn" @click="session.resetGeometry()">
-            <AppIcon name="reset" :size="13" />위치 · 크기 초기화
+            <AppIcon name="reset" :size="13" />{{ t('settings.resetGeometry') }}
           </button>
         </div>
       </div>
 
       <div class="section">
-        <div class="section__head">정보</div>
+        <div class="section__head">{{ t('settings.info') }}</div>
         <div class="section__body">
           <div class="kv">
-            <span class="kv__k">엔진</span><span class="mono">{{ engineName() }}</span>
-            <span class="kv__k">설정 위치</span><span class="mono">{{ settingsDir() }}</span>
+            <span class="kv__k">{{ t('settings.engine') }}</span><span class="mono">{{ engineName() }}</span>
+            <span class="kv__k">{{ t('settings.settingsPath') }}</span
+            ><span class="mono">{{ settingsFile('ui.json') }}</span>
           </div>
         </div>
       </div>

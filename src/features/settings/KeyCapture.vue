@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { comboFrom, formatCombo, isModifierKey } from '@/app/keys'
+import { t } from '@/i18n'
 
 const { combo } = defineProps<{ combo: string }>()
 const emit = defineEmits<{ change: [string] }>()
@@ -32,11 +33,11 @@ function onKeydown(event: KeyboardEvent): void {
   <button
     class="keycap"
     :class="{ 'keycap--empty': !combo, 'keycap--capturing': capturing }"
-    :title="'클릭 후 원하는 키 조합 · Backspace 로 해제'"
+    :title="t('keys.captureHint')"
     @focus="capturing = true"
     @blur="capturing = false"
     @keydown="onKeydown"
   >
-    {{ capturing ? '키 입력...' : formatCombo(combo) }}
+    {{ capturing ? t('keys.capturing') : formatCombo(combo) }}
   </button>
 </template>
