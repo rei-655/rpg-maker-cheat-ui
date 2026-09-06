@@ -1,6 +1,9 @@
 import { isNwjs, settingsFile } from './engine'
+import { root } from './root'
 
 type Json = Record<string, unknown>
+
+const store = () => root.localStorage as Storage | undefined
 
 interface NodeFs {
   existsSync(path: string): boolean
@@ -31,7 +34,7 @@ export class JsonStore {
     const node = nodeFs()
 
     if (!node) {
-      const raw = globalThis.localStorage?.getItem(this.path)
+      const raw = store()?.getItem(this.path)
       return raw ? safeParse(raw) : {}
     }
 
@@ -47,7 +50,7 @@ export class JsonStore {
     const node = nodeFs()
 
     if (!node) {
-      globalThis.localStorage?.setItem(this.path, JSON.stringify(data))
+      store()?.setItem(this.path, JSON.stringify(data))
       return
     }
 
@@ -74,7 +77,7 @@ export class JsonStore {
     const node = nodeFs()
 
     if (!node) {
-      globalThis.localStorage?.removeItem(this.path)
+      store()?.removeItem(this.path)
       return
     }
 

@@ -128,7 +128,7 @@ never touches \`js/main.js\`, and anything it replaces is kept next to the
 original as \`*.cheatui-backup-<timestamp>\`.
 
 Settings live in \`cheat-settings/\` next to the game: language and window in
-\`ui.json\`, key bindings in \`shortcuts.json\`. Delete a file to reset it. The
+\`ui.json\`, key bindings in \`keys.json\`. Delete a file to reset it. The
 starting language can also be set with the \`defaultLocale\` plugin parameter
 (\`auto\` / \`en\` / \`ja\` / \`ko\`).
 
@@ -149,7 +149,7 @@ Node.js は不要です。Windows 標準の PowerShell だけで動きます。
 置き換えるものは \`*.cheatui-backup-<timestamp>\` として元の隣に残します。
 
 設定はゲームの隣の \`cheat-settings/\` に入ります。言語とウィンドウは
-\`ui.json\`、キー割り当ては \`shortcuts.json\`。消せば初期値に戻ります。
+\`ui.json\`、キー割り当ては \`keys.json\`。消せば初期値に戻ります。
 最初の言語はプラグインの \`defaultLocale\`（\`auto\` / \`en\` / \`ja\` / \`ko\`）でも
 指定できます。
 

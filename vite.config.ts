@@ -8,8 +8,8 @@ export default defineConfig({
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) }
   },
   build: {
-    // 古い MV 同梱の NW.js は Chromium 60 相当
-    target: 'es2019',
+    // MV 1.6 は NW.js 0.29（Chromium 66）を同梱する。それより古い MV もある。
+    target: 'es2017',
     outDir: 'dist',
     emptyOutDir: true,
     cssCodeSplit: false,

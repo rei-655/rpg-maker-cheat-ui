@@ -1,3 +1,4 @@
+import { root } from './root'
 type Proto = { prototype: Record<string, unknown> }
 
 let installed = false
@@ -49,7 +50,7 @@ function patch(
   method: string,
   wrapper: (this: Record<string, unknown>, call: () => unknown) => unknown
 ): void {
-  const target = (globalThis as unknown as Record<string, Proto | undefined>)[className]
+  const target = root[className] as Proto | undefined
   const original = target?.prototype?.[method]
 
   if (typeof original !== 'function') return

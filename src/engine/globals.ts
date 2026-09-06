@@ -1,3 +1,4 @@
+import { root } from './root'
 import type {
   Actor,
   BooleanStore,
@@ -39,11 +40,11 @@ interface RpgGlobals {
 
 /** ゲームのグローバル変数への唯一の入口。型のない参照をここに閉じ込める。 */
 export function rpg<K extends keyof RpgGlobals>(key: K): RpgGlobals[K] {
-  return (globalThis as unknown as RpgGlobals)[key]
+  return root[key] as RpgGlobals[K]
 }
 
 export function has(key: keyof RpgGlobals): boolean {
-  return (globalThis as unknown as Record<string, unknown>)[key] != null
+  return root[key] != null
 }
 
 export const party = () => rpg('$gameParty')

@@ -8,13 +8,18 @@ export interface Binding {
   slot: number
 }
 
-const store = new JsonStore('shortcuts.json')
+// 旧版のチート UI も shortcuts.json を使う。混ざらないよう名前を分ける。
+const store = new JsonStore('keys.json')
 const KEY = 'bindings'
 
 function defaults(): Record<string, Binding> {
-  return Object.fromEntries(
-    ACTIONS.map((action) => [action.id, { combo: action.defaultCombo, slot: action.slot ?? 1 }])
-  )
+  const bindings: Record<string, Binding> = {}
+
+  for (const action of ACTIONS) {
+    bindings[action.id] = { combo: action.defaultCombo, slot: action.slot ?? 1 }
+  }
+
+  return bindings
 }
 
 export const useShortcuts = defineStore('shortcuts', {

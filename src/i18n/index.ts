@@ -4,6 +4,7 @@ import en from './en'
 import ja from './ja'
 import ko from './ko'
 import type { Locale, MessageKey, Messages } from './types'
+import { root } from '@/engine/root'
 
 export type { Locale, MessageKey }
 
@@ -28,7 +29,7 @@ function isLocale(value: unknown): value is Locale {
 }
 
 function detect(): Locale {
-  const tag = (globalThis.navigator?.language ?? 'en').toLowerCase()
+  const tag = String((root.navigator as Navigator | undefined)?.language ?? 'en').toLowerCase()
 
   if (tag.startsWith('ja')) return 'ja'
   if (tag.startsWith('ko')) return 'ko'
@@ -40,7 +41,7 @@ function initial(): Locale {
   const saved = settings.get<string>(STORAGE_KEY, '')
   if (isLocale(saved)) return saved
 
-  const fromPlugin = globalThis.window?.__CHEAT_UI_LOCALE__
+  const fromPlugin = root.__CHEAT_UI_LOCALE__
   if (isLocale(fromPlugin)) return fromPlugin
 
   return detect()

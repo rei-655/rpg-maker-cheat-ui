@@ -1,5 +1,6 @@
 import { JsonStore } from './storage'
 import { currentMapId, has, player } from './globals'
+import { root } from './root'
 
 export interface Visit {
   mapId: number
@@ -45,7 +46,7 @@ export function installVisitLog(): void {
   if (installed) return
   installed = true
 
-  const gameMap = (globalThis as unknown as { Game_Map?: { prototype: Record<string, unknown> } }).Game_Map
+  const gameMap = root.Game_Map as { prototype: Record<string, unknown> } | undefined
   const setup = gameMap?.prototype?.setup
 
   if (typeof setup !== 'function') return
