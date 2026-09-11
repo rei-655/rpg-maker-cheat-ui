@@ -22,7 +22,10 @@ const columns = computed<Column[]>(() => [
   { key: 'value', label: t('col.value'), width: 96 }
 ])
 
-const view = useSession().view('data.switches', { widths: { id: 64, name: 320 } })
+const view = useSession().view('data.switches', {
+  widths: { id: 64, name: 320 },
+  flags: { named: true }
+})
 const rows = ref<Row[]>([])
 
 const shown = computed(() => {
@@ -30,7 +33,7 @@ const shown = computed(() => {
 
   return rows.value.filter(
     (row) =>
-      (!view.flags.named || row.name) &&
+      (!view.flags.named || row.name || !query.empty) &&
       (!view.flags.onlyOn || row.value) &&
       matches(query, { id: row.id, value: row.value, texts: [row.name] })
   )
