@@ -19,6 +19,7 @@ interface Buff {
 }
 
 interface MemberRow {
+  key: string
   id: number
   name: string
   hp: number
@@ -57,11 +58,11 @@ const view = session.view('party', { sort: { key: 'name', desc: false }, widths:
 const stateView = session.view('party.states', { widths: { id: 64 } })
 
 const rows = ref<MemberRow[]>([])
-const selectedId = ref<number | null>(null)
+const selectedKey = ref<string | null>(null)
 const allStates = ref<DataState[]>([])
 const names = ref<string[]>([])
 
-const selected = computed(() => rows.value.find((row) => row.id === selectedId.value) ?? null)
+const selected = computed(() => rows.value.find((row) => row.key === selectedKey.value) ?? null)
 
 const params = computed(() =>
   (selected.value?.params ?? []).map((value, paramId) => ({
@@ -80,7 +81,7 @@ onMounted(refresh)
 
 function refresh(): void {
   names.value = paramNames()
-  rows.value = partyMembers().map(describe)
+  rows.value = partyMembers().map((actor, index) => describe(actor, index))
 
   allStates.value = has('$dataStates')
     ? rpg('$dataStates')
@@ -88,12 +89,12 @@ function refresh(): void {
         .map((state) => ({ id: state.id, name: state.name }))
     : []
 
-  if (!rows.value.some((row) => row.id === selectedId.value)) {
-    selectedId.value = rows.value[0]?.id ?? null
+  if (!rows.value.some((row) => row.key === selectedKey.value)) {
+    selectedKey.value = rows.value[0]?.key ?? null
   }
 }
 
-function describe(actor: Actor): MemberRow {
+function describe(actor: Actor, index: number): MemberRow {
   const count = actor._paramPlus?.length ?? 0
   const buffs: Buff[] = []
 
@@ -104,6 +105,8 @@ function describe(actor: Actor): MemberRow {
 
   return {
     actor,
+    // 同じアクターが二度並ぶゲームもある。行が消えないよう位置で一意にする。
+    key: `${index}-${actor._actorId}`,
     id: actor._actorId,
     name: actor.name?.() ?? '',
     hp: actor.hp,
@@ -217,10 +220,11 @@ function clearAll(): void {
         v-model:widths="view.widths"
         :columns="columns"
         :rows="rows"
+        row-key="key"
         clickable
-        :selected-key="selectedId"
+        :selected-key="selectedKey"
         :empty-text="t('party.empty')"
-        @row-click="selectedId = $event.id"
+        @row-click="selectedKey = $event.key"
       >
         <template #hp="{ row }">
           <div class="row">

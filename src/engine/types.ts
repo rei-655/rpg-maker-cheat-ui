@@ -59,6 +59,8 @@ export interface Actor extends Battler {
 export interface Party {
   _gold: number
   members(): Actor[]
+  /** 控えを含む全員。戦闘中の members() は参加メンバーだけを返す。 */
+  allMembers?(): Actor[]
   numItems(item: DataItem): number
   maxItems(item: DataItem): number
   gainItem(item: DataItem, amount: number): void

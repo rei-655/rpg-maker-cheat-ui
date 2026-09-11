@@ -116,6 +116,15 @@ describe('PartyPanel', () => {
     expect(text).toContain(t('party.level'))
   })
 
+  it('lists reserve members too, not just the battle party', async () => {
+    // 実機で控えが 1 人消えていた。members() ではなく allMembers() を見る。
+    const panel = await open(PartyPanel)
+    const memberRows = panel.findAll('.table-wrap')[0].findAll('tbody tr')
+
+    expect(memberRows).toHaveLength(3)
+    expect(memberRows.map((row) => row.text()).join(' ')).toContain('Marsha')
+  })
+
   it('shows a member detail without needing a click', async () => {
     expect((await open(PartyPanel)).find('.detail').exists()).toBe(true)
   })
