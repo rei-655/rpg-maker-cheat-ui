@@ -101,6 +101,15 @@ function Select-GameWithDialog {
 }
 
 # 補助
+# $child が $parent の内側（または同一）か。導入先が導入スクリプト自身を
+# 含んでいないか確かめるために使う。
+function Test-Inside ([string]$child, [string]$parent) {
+    $c = [IO.Path]::GetFullPath($child).TrimEnd([char]92) + [char]92
+    $p = [IO.Path]::GetFullPath($parent).TrimEnd([char]92) + [char]92
+
+    return $c.StartsWith($p, [StringComparison]::OrdinalIgnoreCase)
+}
+
 function Backup-File ([string]$path) {
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return $null }
 
@@ -358,6 +367,15 @@ $cheatSource = Join-Path $PROJECT_ROOT 'dist'
 if (-not (Test-Path -LiteralPath $cheatSource -PathType Container)) {
     Write-Fail "No build output at $cheatSource"
     Write-Info 'Run npm install && npm run build first.'
+    exit 1
+}
+
+# 導入先が導入スクリプト自身を抱えている場合は手の施しようがない。
+# 退避した瞬間にコピー元が消える。MZ はゲーム直下が導入先なので、配布物を
+# ゲームのフォルダにそのまま展開し、かつ同じ名前を使うとこれが起きる。
+if (Test-Inside $PROJECT_ROOT $cheatTarget) {
+    Write-Fail "The installer is sitting inside its own target: $cheatTarget"
+    Write-Info 'Move this folder somewhere else, then drag the game folder onto the .bat again.'
     exit 1
 }
 

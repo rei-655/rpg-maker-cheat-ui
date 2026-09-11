@@ -35,6 +35,15 @@ if (!existsSync(gameRoot)) {
     process.exit(1)
 }
 
+/** child が parent の内側（または同一）か。 */
+function isInside (child, parent) {
+    const suffix = process.platform === 'win32' ? '\\' : '/'
+    const c = resolve(child) + suffix
+    const p = resolve(parent) + suffix
+
+    return c.toLowerCase().startsWith(p.toLowerCase())
+}
+
 /** MV は www/ 配下、MZ はプロジェクト直下。 */
 function detectLayout (root) {
     const candidates = [
@@ -98,6 +107,13 @@ function backup (path) {
 
 // アセット
 const cheatTarget = join(layout.contentRoot, ASSET_DIR)
+
+// 導入先が導入スクリプト自身を抱えている場合は手の施しようがない。
+if (isInside(PROJECT_ROOT, cheatTarget)) {
+    console.error(`the installer is sitting inside its own target: ${cheatTarget}`)
+    console.error('move this folder somewhere else and run it again')
+    process.exit(1)
+}
 
 // 自分が置いたフォルダ以外は消さずに退避する。
 if (existsSync(cheatTarget)) {
