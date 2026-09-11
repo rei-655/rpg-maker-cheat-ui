@@ -85,6 +85,23 @@ export function installEngine(stubs: Stubs = {}): void {
       canEncounter: () => true
     },
 
+    // 実機を真似る: 体力や好感度を $gameVariables ではなく自前の入れ物に
+    // 持つゲームがある。探索はここを見つけられなければ意味がない。
+    LifeSim: {
+      version: '0.1.0',
+      modules: {
+        Stats: {
+          _data: { stamina: 45, kaihenPt: 10, favorability: 0 },
+          _limits: { stamina: { min: 0, max: 90 } },
+          note: 'not in $gameVariables'
+        }
+      }
+    },
+
+    // 歩いてはいけないもの。描画部品と DOM が混ざると数千件の座標が採れる。
+    Graphics: { width: 816, height: 624 },
+    noisySprite: Object.assign(Object.create({ constructor: { name: 'Sprite_Character' } }), { x: 1, y: 2 }),
+
     TouchInput: {
       _events: { wheelX: 0, wheelY: 0 },
       _newState: { wheelX: 0, wheelY: 0 },
@@ -97,6 +114,9 @@ export function installEngine(stubs: Stubs = {}): void {
     Input: { _onKeyDown: vi.fn(), _onKeyUp: vi.fn() },
 
     __resetGame() {
+      const sim = (globalThis as never as { LifeSim: { modules: { Stats: { _data: Record<string, number> } } } }).LifeSim
+      Object.assign(sim.modules.Stats._data, { stamina: 45, kaihenPt: 10, favorability: 0 })
+
       for (const key of Object.keys(variableValues)) delete variableValues[Number(key)]
       for (const key of Object.keys(switchValues)) delete switchValues[Number(key)]
       for (const key of Object.keys(owned)) delete owned[Number(key)]

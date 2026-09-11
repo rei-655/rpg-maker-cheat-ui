@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import VariablesTable from './VariablesTable.vue'
 import SwitchesTable from './SwitchesTable.vue'
+import FinderTable from './FinderTable.vue'
 import { useSession } from '@/stores/session'
 import { t } from '@/i18n'
 
-const TABS = ['variables', 'switches'] as const
+const TABS = ['variables', 'switches', 'finder'] as const
 
 const view = useSession().view('data', { tab: 'variables' })
 </script>
@@ -22,12 +23,13 @@ const view = useSession().view('data', { tab: 'variables' })
         {{ t(`data.${tab}`) }}
       </button>
       <span class="spacer" />
-      <span class="hint">{{ t('data.lead') }}</span>
+      <span class="hint">{{ t(view.tab === 'finder' ? 'finder.lead' : 'data.lead') }}</span>
     </div>
 
     <div class="content__scroll">
-      <VariablesTable v-if="view.tab !== 'switches'" />
-      <SwitchesTable v-else />
+      <SwitchesTable v-if="view.tab === 'switches'" />
+      <FinderTable v-else-if="view.tab === 'finder'" />
+      <VariablesTable v-else />
     </div>
   </div>
 </template>
