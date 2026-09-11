@@ -24,7 +24,12 @@ const columns = computed<Column[]>(() => [
   { key: 'value', label: t('col.value'), align: 'right' }
 ])
 
-const view = useSession().view('data.variables', { widths: { id: 64, name: 260 } })
+// 名前のない枠が大半を占めるゲームが多い（701 枠中 82 個だけ、など）。
+// 既定で隠し、検索したときだけ全体から探す。
+const view = useSession().view('data.variables', {
+  widths: { id: 64, name: 260 },
+  flags: { named: true }
+})
 const rows = ref<Row[]>([])
 const editing = ref(new Set<number>())
 const operand = ref('')
@@ -37,7 +42,7 @@ const shown = computed(() => {
 
   return rows.value.filter((row) => {
     if (editing.value.has(row.id)) return true
-    if (view.flags.named && !row.name) return false
+    if (view.flags.named && !row.name && query.empty) return false
     if (view.flags.nonZero && !row.value) return false
     if (scan.active && view.flags.onlyCandidates !== false && !scanner.has(row.id)) return false
 

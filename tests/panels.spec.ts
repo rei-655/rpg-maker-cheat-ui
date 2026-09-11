@@ -149,7 +149,22 @@ describe('VariablesTable', () => {
     const panel = await open(VariablesTable)
 
     expect(panel.text()).toContain('Gold Counter')
-    expect(rowsOf(panel)).toHaveLength(3)
+  })
+
+  it('hides unnamed slots by default, since most games leave hundreds empty', async () => {
+    // 実機は 701 枠のうち名前つきが 82 個だけだった。
+    const panel = await open(VariablesTable)
+
+    expect(rowsOf(panel)).toHaveLength(2)
+    expect(panel.text()).not.toContain(t('common.unnamed'))
+  })
+
+  it('still finds an unnamed slot when you search for it', async () => {
+    const panel = await open(VariablesTable)
+    await setSearch(panel, '#3')
+
+    expect(rowsOf(panel)).toHaveLength(1)
+    expect(rowsOf(panel)[0].text()).toContain(t('common.unnamed'))
   })
 
   it('filters by value, which the old build could not do at all', async () => {
