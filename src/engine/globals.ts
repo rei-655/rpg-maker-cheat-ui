@@ -65,8 +65,18 @@ export function paramNames(): string[] {
   return has('$dataSystem') ? (rpg('$dataSystem').terms?.params ?? []) : []
 }
 
+/**
+ * 控えを含むパーティ全員。
+ *
+ * members() は戦闘中だと参加メンバーだけを返し、maxBattleMembers を絞る
+ * プラグインを入れたゲームでは控えが丸ごと見えなくなる。編集対象は全員。
+ */
 export function partyMembers(): Actor[] {
-  return has('$gameParty') ? party().members() : []
+  if (!has('$gameParty')) return []
+
+  const current = party()
+
+  return current.allMembers ? current.allMembers() : current.members()
 }
 
 export function troopMembers() {

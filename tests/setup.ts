@@ -7,7 +7,9 @@ interface Stubs {
 
 /** テスト対象が触る範囲だけの最小 RPG Maker スタブ。 */
 export function installEngine(stubs: Stubs = {}): void {
-  const actors = [makeActor('Harold', 1), makeActor('Therese', 2)]
+  // 実機を真似る: maxBattleMembers を絞るプラグインが入ると members() は
+  // 参加メンバーだけを返し、控えが見えなくなる。
+  const actors = [makeActor('Harold', 1), makeActor('Therese', 2), makeActor('Marsha', 3)]
   const variableValues: Record<number, unknown> = {}
   const switchValues: Record<number, boolean> = {}
   const owned: Record<number, number> = {}
@@ -56,7 +58,8 @@ export function installEngine(stubs: Stubs = {}): void {
 
     $gameParty: {
       _gold: 500,
-      members: () => actors,
+      members: () => actors.slice(0, 2),
+      allMembers: () => actors,
       numItems: (item: { id: number }) => owned[item.id] ?? 0,
       maxItems: () => 99,
       gainItem: (item: { id: number }, amount: number) => {
