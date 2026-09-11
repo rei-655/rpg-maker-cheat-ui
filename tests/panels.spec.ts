@@ -125,6 +125,20 @@ describe('PartyPanel', () => {
     expect(memberRows.map((row) => row.text()).join(' ')).toContain('Marsha')
   })
 
+  it('opens the clicked member in the detail below', async () => {
+    // 行を押しても詳細が先頭のままだった。DataTable に選択機能が無かった。
+    const panel = await open(PartyPanel)
+    const memberRows = panel.findAll('.table-wrap')[0].findAll('tbody tr')
+
+    expect(panel.find('.detail__head').text()).not.toContain('Therese')
+
+    const therese = memberRows.find((row) => row.text().includes('Therese'))!
+    await therese.trigger('click')
+
+    expect(panel.find('.detail__head').text()).toContain('Therese')
+    expect(therese.classes()).toContain('is-selected')
+  })
+
   it('shows a member detail without needing a click', async () => {
     expect((await open(PartyPanel)).find('.detail').exists()).toBe(true)
   })
