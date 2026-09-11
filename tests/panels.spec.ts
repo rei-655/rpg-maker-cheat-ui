@@ -3,6 +3,7 @@ import { nextTick, type Component } from 'vue'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { setLocale, t } from '@/i18n'
+import { settingsFile } from '@/engine/engine'
 import { PANELS } from '@/app/panels'
 
 import HomePanel from '@/features/home/HomePanel.vue'
@@ -36,6 +37,12 @@ const rowsOf = (panel: VueWrapper) => panel.findAll('tbody tr')
 
 async function setSearch(panel: VueWrapper, value: string): Promise<void> {
   await panel.find('.search input').setValue(value)
+}
+
+/** 行末のボタン。保存や削除はいつも右端に置いている。 */
+function lastButton(row: { findAll(selector: string): { trigger(event: string): Promise<void> }[] }) {
+  const buttons = row.findAll('button')
+  return buttons[buttons.length - 1]!
 }
 
 function clickText(panel: VueWrapper, label: string) {
@@ -278,6 +285,60 @@ describe('FinderTable', () => {
     await panel.find('.detail').findAll('.chip')[2].trigger('click')
 
     expect(panel.find('.detail').text()).toContain('_limits')
+  })
+
+  it('keeps a value you found, so the hunt is not repeated next time', async () => {
+    const panel = await open(FinderTable)
+    await setSearch(panel, '_data.stamina')
+    await lastButton(rowsOf(panel)[0]).trigger('click')
+
+    const section = panel.find('.section')
+
+    expect(section.text()).toContain('LifeSim.modules.Stats._data.stamina')
+    expect(section.text()).not.toContain(t('finder.noSaved'))
+  })
+
+  it('brings the saved list back on the next visit', async () => {
+    const first = await open(FinderTable)
+    await setSearch(first, '_data.stamina')
+    await lastButton(rowsOf(first)[0]).trigger('click')
+
+    const again = await open(FinderTable)
+
+    expect(again.find('.section').text()).toContain('LifeSim.modules.Stats._data.stamina')
+  })
+
+  it('edits the game straight from the saved list', async () => {
+    const panel = await open(FinderTable)
+    await setSearch(panel, '_data.stamina')
+    await lastButton(rowsOf(panel)[0]).trigger('click')
+
+    const field = panel.find('.section tbody').findAll('input')[1]
+    await field.setValue('90')
+    await field.trigger('keydown', { key: 'Enter' })
+
+    expect(stats().stamina).toBe(90)
+  })
+
+  it('drops a saved value when you are done with it', async () => {
+    const panel = await open(FinderTable)
+    await setSearch(panel, '_data.stamina')
+    await lastButton(rowsOf(panel)[0]).trigger('click')
+
+    await lastButton(panel.find('.section tbody tr')).trigger('click')
+
+    expect(panel.find('.section').text()).toContain(t('finder.noSaved'))
+  })
+
+  it('says so when a saved place is not in the game right now', async () => {
+    localStorage.setItem(
+      settingsFile('watchlist.json'),
+      JSON.stringify({ saved: [{ key: 'w1', name: 'gone', path: 'Gone.value', keys: ['Gone', 'value'] }] })
+    )
+
+    const panel = await open(FinderTable)
+
+    expect(panel.find('.section').text()).toContain(t('finder.missing'))
   })
 
   it('edits a neighbouring field from the structure view', async () => {

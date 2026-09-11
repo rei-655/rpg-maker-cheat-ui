@@ -114,6 +114,9 @@ export function installEngine(stubs: Stubs = {}): void {
     Input: { _onKeyDown: vi.fn(), _onKeyUp: vi.fn() },
 
     __resetGame() {
+      // 保存した値や地点が前のテストから残らないようにする。
+      localStorage.clear()
+
       const sim = (globalThis as never as { LifeSim: { modules: { Stats: { _data: Record<string, number> } } } }).LifeSim
       Object.assign(sim.modules.Stats._data, { stamina: 45, kaihenPt: 10, favorability: 0 })
 

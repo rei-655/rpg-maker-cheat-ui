@@ -131,11 +131,12 @@ export function describe(keys: string[]): Structure | null {
   return {
     path: keys.join('.'),
     type: typeName(node),
-    fields: entries(node, MAX_FIELDS).map(([key, value]) => field(key, value))
+    fields: entries(node, MAX_FIELDS).map(([key, value]) => fieldOf(key, value))
   }
 }
 
-function field(key: string, value: unknown): Field {
+/** 一つの値を、型と編集可否つきの見出しにする。保存した値の一覧でも使う。 */
+export function fieldOf(key: string, value: unknown): Field {
   if (value === null || value === undefined) {
     return { key, kind: 'empty', text: String(value), value, editable: false, size: 0 }
   }

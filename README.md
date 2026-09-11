@@ -101,6 +101,13 @@ field the same object holds, with its type, editable in place. Nested objects
 open on click and the breadcrumb steps back out, so you can see the shape of the
 thing you just found rather than one lone number.
 
+Finding a value takes a few passes, so you should only have to do it once. The
+save button on a row keeps it under **Saved values** at the top of the screen,
+where it stays editable and comes back on the next launch — written to
+`cheat-settings/watchlist.json` next to the game, so each game has its own list.
+Give an entry a name of your own; a bare `stamina` says little a week later. If
+the object is not built yet the row says so instead of quietly vanishing.
+
 Screens, the database and huge engine internals are skipped on purpose;
 variables and switches have their own tabs.
 
@@ -146,7 +153,7 @@ plugin parameter `defaultLocale` in the plugin manager:
 | `en` / `ja` / `ko` | always starts in that language |
 
 Order of precedence: saved choice → `defaultLocale` → display language → English.
-Deleting `ui.json` returns everything to the default.
+Deleting `ui.json` returns everything to the default; `watchlist.json` holds the values you saved.
 
 ### It does not disturb the game
 
@@ -276,6 +283,12 @@ LifeSim.modules.Stats._limits...   max            90
 並び、その場で編集できます。入れ子は押すと潜り、パンくずで戻れるので、見つけた
 値が何の一部なのかが分かります。
 
+値を見つけるまでには何度か絞り込みが要るので、探すのは一度で済むようにしています。
+行の保存ボタンを押すと画面上部の**保存した値**に入り、そのまま編集でき、次回の
+起動でも残ります。保存先はゲームの隣の `cheat-settings/watchlist.json` なので、
+ゲームごとに別の一覧です。名前は自分で付けられます（`stamina` のままだと一週間後に
+何のことか分かりません）。入れ物がまだ無いときは、黙って消えずにその旨を表示します。
+
 画面部品・データベース・エンジン内部は意図的に除いています。変数とスイッチは
 それぞれのタブが受け持ちます。
 
@@ -320,7 +333,7 @@ English・日本語・한국어 に対応。**Settings → 一般**で切り替�
 | `en` / `ja` / `ko` | 常にその言語で開く |
 
 優先順位は 保存された選択 → `defaultLocale` → 表示言語 → 英語。
-`ui.json` を削除すれば既定値に戻る。
+`ui.json` を削除すれば既定値に戻る。保存した値は `watchlist.json` にある。
 
 ### ゲームを壊さない
 
