@@ -19,13 +19,19 @@ const {
   columns,
   rows,
   rowKey = 'id',
-  emptyText = ''
+  emptyText = '',
+  clickable = false,
+  selectedKey = null
 } = defineProps<{
   columns: Column[]
   rows: T[]
   rowKey?: string
   emptyText?: string
+  clickable?: boolean
+  selectedKey?: string | number | null
 }>()
+
+const emit = defineEmits<{ rowClick: [T] }>()
 
 const sort = defineModel<{ key: string | null; desc: boolean }>('sort', { required: true })
 const page = defineModel<number>('page', { required: true })
@@ -202,7 +208,12 @@ function compare(a: unknown, b: unknown): number {
           </tr>
         </thead>
         <tbody>
-          <tr v-for="row in visible" :key="row[rowKey]">
+          <tr
+            v-for="row in visible"
+            :key="row[rowKey]"
+            :class="{ clickable, 'is-selected': selectedKey !== null && row[rowKey] === selectedKey }"
+            @click="clickable && emit('rowClick', row)"
+          >
             <td v-for="column in columns" :key="column.key" :class="column.align === 'right' ? 'num' : ''">
               <slot :name="column.key" :row="row">
                 <span :class="column.mono ? 'mono' : ''">{{ row[column.key] }}</span>
