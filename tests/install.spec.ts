@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process'
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -158,6 +158,24 @@ describe('installer', () => {
 
     expect(readPlugins(game)).toBe(before)
     expect(existsSync(join(game.content, 'cheat-ui'))).toBe(false)
+  })
+
+  it('refuses to run from inside its own target instead of moving itself aside', () => {
+    // 実機で起きた。MZ はゲーム直下が導入先なので、配布物をゲームのフォルダに
+    // そのまま展開し、入れ物が cheat-ui という名前だと自分自身を退避して死ぬ。
+    const game = makeGame()
+    const nested = join(game.content, 'cheat-ui', 'tools')
+
+    mkdirSync(nested, { recursive: true })
+    mkdirSync(join(game.content, 'cheat-ui', 'dist'), { recursive: true })
+    writeFileSync(join(game.content, 'cheat-ui', 'dist', 'cheat-ui.js'), '// build', 'utf-8')
+    cpSync(JS, join(nested, 'install.mjs'))
+
+    expect(() => execFileSync(process.execPath, [join(nested, 'install.mjs'), game.root], { encoding: 'utf-8' })).toThrow()
+
+    // 自分自身が退避されていないこと
+    expect(existsSync(join(game.content, 'cheat-ui', 'dist', 'cheat-ui.js'))).toBe(true)
+    expect(readdirSync(game.content).filter((entry) => entry.includes('cheatui-backup'))).toEqual([])
   })
 
   it('never destroys a folder the game already owns', () => {
