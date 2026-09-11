@@ -13,6 +13,7 @@ import UnstuckPanel from '@/features/unstuck/UnstuckPanel.vue'
 import DataPanel from '@/features/data/DataPanel.vue'
 import VariablesTable from '@/features/data/VariablesTable.vue'
 import SwitchesTable from '@/features/data/SwitchesTable.vue'
+import FinderTable from '@/features/data/FinderTable.vue'
 import TravelPanel from '@/features/travel/TravelPanel.vue'
 import SettingsPanel from '@/features/settings/SettingsPanel.vue'
 
@@ -200,6 +201,98 @@ describe('VariablesTable', () => {
     await field.setValue('1')
 
     expect(rowsOf(panel)).toHaveLength(1)
+  })
+})
+
+describe('FinderTable', () => {
+  const stats = () =>
+    (globalThis as unknown as { LifeSim: { modules: { Stats: { _data: Record<string, number> } } } })
+      .LifeSim.modules.Stats._data
+
+  const findRow = (panel: VueWrapper, text: string) =>
+    rowsOf(panel).find((row) => row.text().includes(text))
+
+  it('lists a value the game keeps outside the variable list', async () => {
+    // 変数は全部 0 なのに HUD には数字が出る、というゲームのための画面。
+    const panel = await open(FinderTable)
+    await setSearch(panel, '_data.stamina')
+
+    expect(rowsOf(panel)).toHaveLength(1)
+    expect(rowsOf(panel)[0].text()).toContain('LifeSim.modules.Stats._data')
+  })
+
+  it('brings the limits along with the value they cap', async () => {
+    // 上限つきの値は、上限も同じ検索に出たほうが手数が減る。
+    const panel = await open(FinderTable)
+    await setSearch(panel, 'stamina')
+
+    expect(rowsOf(panel).map((row) => row.text()).join(' ')).toContain('_limits')
+  })
+
+  it('filters by value, so you can hunt the number the game shows you', async () => {
+    const panel = await open(FinderTable)
+    await setSearch(panel, '45')
+
+    expect(rowsOf(panel).length).toBeGreaterThanOrEqual(1)
+    expect(panel.text()).toContain('stamina')
+  })
+
+  it('writes the value into the game', async () => {
+    const panel = await open(FinderTable)
+    await setSearch(panel, '_data.stamina')
+
+    const field = panel.find('tbody input')
+    await field.setValue('90')
+    await field.trigger('keydown', { key: 'Enter' })
+
+    expect(stats().stamina).toBe(90)
+  })
+
+  it('shows what surrounds a value once you click its row', async () => {
+    const panel = await open(FinderTable)
+    await setSearch(panel, '_data.stamina')
+    await findRow(panel, 'stamina')!.trigger('click')
+
+    const detail = panel.find('.detail')
+
+    expect(detail.exists()).toBe(true)
+    expect(detail.text()).toContain('kaihenPt')
+    expect(detail.text()).toContain('favorability')
+  })
+
+  it('offers a breadcrumb so you can step back out of the object', async () => {
+    const panel = await open(FinderTable)
+    await setSearch(panel, '_data.stamina')
+    await findRow(panel, 'stamina')!.trigger('click')
+
+    const crumbs = panel.find('.detail').findAll('.chip').map((chip) => chip.text())
+
+    expect(crumbs).toEqual(['LifeSim', 'modules', 'Stats', '_data'])
+  })
+
+  it('goes back up a level when an earlier step is clicked', async () => {
+    const panel = await open(FinderTable)
+    await setSearch(panel, '_data.stamina')
+    await findRow(panel, 'stamina')!.trigger('click')
+
+    await panel.find('.detail').findAll('.chip')[2].trigger('click')
+
+    expect(panel.find('.detail').text()).toContain('_limits')
+  })
+
+  it('edits a neighbouring field from the structure view', async () => {
+    const panel = await open(FinderTable)
+    await setSearch(panel, '_data.stamina')
+    await findRow(panel, 'stamina')!.trigger('click')
+
+    const detail = panel.find('.detail')
+    const favorability = detail.findAll('tbody tr').find((row) => row.text().includes('favorability'))!
+    const field = favorability.find('input')
+
+    await field.setValue('100')
+    await field.trigger('keydown', { key: 'Enter' })
+
+    expect(stats().favorability).toBe(100)
   })
 })
 

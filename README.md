@@ -70,7 +70,7 @@ Organised by what you are trying to do, not by the engine's tables.
 | **Inventory** | Gold plus items, weapons and armors as tabs |
 | **Combat** | Stop encounters, force one, end the battle you are in, edit the enemies |
 | **Stuck?** | Record → try the thing that will not work → see exactly which switches and variables the game touched, and flip them |
-| **Variables** | Direct editing of variables and switches, with search and a value scan |
+| **Variables** | Direct editing of variables and switches, with search and a value scan. A third tab, **Find a value**, walks the game's own plugin objects for numbers that are not variables at all, and shows what surrounds each one |
 | **Travel** | Places you have been (recorded automatically) and spots you saved. The full map list is tucked behind a disclosure |
 | **Settings** | Shortcut keys, language, window |
 
@@ -80,6 +80,29 @@ A list of two thousand unnamed switches tells you nothing. **Stuck?** turns that
 around: it snapshots every switch and variable, you go and try the door that will
 not open, and it shows you only what the game changed in between. Flip one, put
 it back, try again.
+
+#### When the numbers are not in the variables
+
+Some games never put their stats in a variable. `HP 25/90` on screen, every
+variable reading 0 — the value lives in an object the game's own plugin keeps.
+**Variables → Find a value** walks the objects reachable from the game's globals
+and lists every number it finds, with the path it came from:
+
+```
+LifeSim.modules.Stats._data        stamina        45
+LifeSim.modules.Stats._limits...   max            90
+```
+
+Search and the value scan work the same as on variables, so you can hunt the
+number the game is showing you and narrow it down by playing.
+
+Click a row and the panel below shows **what surrounds that value** — every other
+field the same object holds, with its type, editable in place. Nested objects
+open on click and the breadcrumb steps back out, so you can see the shape of the
+thing you just found rather than one lone number.
+
+Screens, the database and huge engine internals are skipped on purpose;
+variables and switches have their own tabs.
 
 #### Search grammar
 
@@ -224,7 +247,7 @@ Windows 以外には同じ動きの Node 版がある。
 | **もちもの** | 所持金と、アイテム・武器・防具のタブ |
 | **戦闘** | エンカウントの停止と強制、今の戦闘の終了、敵の編集 |
 | **進めない** | 記録 → 進まない行動を試す → その間にゲームが触ったスイッチと変数だけを表示し、そこで切り替える |
-| **変数** | 変数とスイッチの直接編集。検索と値スキャン付き |
+| **変数** | 変数とスイッチの直接編集。検索と値スキャン付き。3 つめのタブ**値を探す**では、変数ではなくプラグインが自前で持つ数値を探し、その値の周りの構造も見られます |
 | **移動** | 行った場所（自動で記録）と保存した場所。全マップ一覧は折りたたみの中 |
 | **設定** | ショートカット・言語・ウィンドウ |
 
@@ -233,6 +256,28 @@ Windows 以外には同じ動きの Node 版がある。
 名前のないスイッチが 2000 個並んでいても何もわかりません。**進めない**画面は
 順序を逆にします。まず全スイッチと全変数を記録し、開かない扉を試してから戻ると、
 その間にゲームが変えた値だけが並びます。切り替えて、戻して、もう一度試す。
+
+#### 数字が変数に入っていないとき
+
+ステータスを変数に置かないゲームがあります。画面には `体力 25/90` と出ているのに
+変数はすべて 0 という場合、その値はプラグインが自前で持つオブジェクトの中です。
+**変数 → 値を探す**はゲームのグローバルから辿れるオブジェクトを歩き、見つけた
+数値をパス付きで並べます。
+
+```
+LifeSim.modules.Stats._data        stamina        45
+LifeSim.modules.Stats._limits...   max            90
+```
+
+検索と値スキャンは変数のときと同じです。画面に出ている数字を手がかりに、遊び
+ながら絞り込めます。
+
+行を押すと下に**その値の周り**が出ます。同じオブジェクトが持つ項目が型つきで
+並び、その場で編集できます。入れ子は押すと潜り、パンくずで戻れるので、見つけた
+値が何の一部なのかが分かります。
+
+画面部品・データベース・エンジン内部は意図的に除いています。変数とスイッチは
+それぞれのタブが受け持ちます。
 
 #### 検索記法
 

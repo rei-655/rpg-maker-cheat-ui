@@ -31,6 +31,9 @@ describe('the bundle runs on the oldest engine we support', () => {
     const uses = BUNDLE.match(/.{24}globalThis/g) ?? []
 
     for (const use of uses) {
+      // 文字列の中の "globalThis" は参照ではない。読み出す箇所だけを見る。
+      if (/["'`]globalThis$/.test(use)) continue
+
       expect(use, use).toMatch(/typeof globalThis/)
     }
   })
