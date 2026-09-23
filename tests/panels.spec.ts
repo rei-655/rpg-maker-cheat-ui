@@ -15,6 +15,7 @@ import DataPanel from '@/features/data/DataPanel.vue'
 import VariablesTable from '@/features/data/VariablesTable.vue'
 import SwitchesTable from '@/features/data/SwitchesTable.vue'
 import FinderTable from '@/features/data/FinderTable.vue'
+import SavedValues from '@/features/data/SavedValues.vue'
 import TravelPanel from '@/features/travel/TravelPanel.vue'
 import SettingsPanel from '@/features/settings/SettingsPanel.vue'
 
@@ -354,6 +355,98 @@ describe('FinderTable', () => {
     await field.trigger('keydown', { key: 'Enter' })
 
     expect(stats().favorability).toBe(100)
+  })
+})
+
+describe('FinderTable handles more than numbers', () => {
+  const chip = (panel: VueWrapper, label: string) =>
+    panel.findAll('.chip').find((entry) => entry.text().startsWith(label))!
+
+  it('hides text and flags by default, so numbers are not buried', async () => {
+    const panel = await open(FinderTable)
+    await setSearch(panel, 'prologue')
+
+    expect(panel.find('.table-wrap .empty').text()).toBe(t('finder.empty'))
+  })
+
+  it('finds a text value once the text filter is on', async () => {
+    const panel = await open(FinderTable)
+    await chip(panel, t('kind.string')).trigger('click')
+    await setSearch(panel, 'prologue')
+
+    // 場所と項目は別の列なので、行の文字列としては続いて出る。
+    expect(rowsOf(panel)[0].text()).toContain('Progress')
+    expect(rowsOf(panel)[0].text()).toContain('chapter')
+  })
+
+  it('offers a flag as a toggle rather than asking you to type true', async () => {
+    const panel = await open(FinderTable)
+    await chip(panel, t('kind.boolean')).trigger('click')
+    await setSearch(panel, 'unlocked')
+
+    const row = rowsOf(panel)[0]
+
+    expect(row.text()).toContain(t('common.on'))
+    expect(row.find('input').exists()).toBe(false)
+  })
+
+  it('counts what each filter would show, so you know where to look', async () => {
+    const panel = await open(FinderTable)
+
+    expect(chip(panel, t('kind.string')).text()).toMatch(/\d/)
+  })
+})
+
+describe('the saved list spans variables and plugin objects', () => {
+  const lastButtonOf = (row: VueWrapper | ReturnType<VueWrapper['find']>) => lastButton(row as never)
+
+  it('saves a variable straight from the variable list', async () => {
+    const panel = await open(VariablesTable)
+    await lastButtonOf(rowsOf(panel)[0]).trigger('click')
+
+    const saved = await open(SavedValues)
+
+    expect(saved.text()).toContain(t('watch.variable', { id: 1 }))
+  })
+
+  it('edits a saved variable through the engine, keeping its number type', async () => {
+    const panel = await open(VariablesTable)
+    await lastButtonOf(rowsOf(panel)[0]).trigger('click')
+
+    const saved = await open(SavedValues)
+    const field = saved.findAll('input')[1]
+
+    await field.setValue('4242')
+    await field.trigger('keydown', { key: 'Enter' })
+
+    expect(game().$gameVariables.value(1)).toBe(4242)
+    expect(typeof game().$gameVariables.value(1)).toBe('number')
+  })
+
+  it('saves a switch and shows it as a toggle', async () => {
+    const panel = await open(SwitchesTable)
+    await lastButtonOf(rowsOf(panel)[0]).trigger('click')
+
+    const saved = await open(SavedValues)
+    const toggle = saved.findAll('tbody button').find((button) => button.text().includes(t('common.off')))!
+
+    await toggle.trigger('click')
+
+    expect(game().$gameSwitches.value(1)).toBe(true)
+  })
+
+  it('shows up on Home, since that is where you reach for things', async () => {
+    const variables = await open(VariablesTable)
+    await lastButtonOf(rowsOf(variables)[0]).trigger('click')
+
+    const home = await open(HomePanel)
+
+    expect(home.text()).toContain(t('finder.saved'))
+    expect(home.text()).toContain('Gold Counter')
+  })
+
+  it('stays out of the way on Home when nothing is saved', async () => {
+    expect((await open(HomePanel)).text()).not.toContain(t('finder.saved'))
   })
 })
 

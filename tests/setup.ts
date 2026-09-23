@@ -98,9 +98,26 @@ export function installEngine(stubs: Stubs = {}): void {
       }
     },
 
+    // 数値以外も持つ。解放フラグは真偽値、進行段階は文字列というゲームがある。
+    Progress: {
+      chapter: 'prologue',
+      unlocked: true,
+      locked: false,
+      blank: '',
+      flags: new Map([
+        ['metSister', true],
+        ['sawEnding', false]
+      ]),
+      visited: new Set(['town']),
+      hidden: hiddenHolder(),
+      derived: new Derived()
+    },
+
     // 歩いてはいけないもの。描画部品と DOM が混ざると数千件の座標が採れる。
     Graphics: { width: 816, height: 624 },
-    noisySprite: Object.assign(Object.create({ constructor: { name: 'Sprite_Character' } }), { x: 1, y: 2 }),
+    noisySprite: named('Sprite_Character', { x: 1, y: 2 }),
+    // プラグインのクラス。名前が Window で始まるだけで落としてはいけない。
+    pluginWindow: named('WindowStats', { rank: 7 }),
 
     TouchInput: {
       _events: { wheelX: 0, wheelY: 0 },
@@ -117,14 +134,43 @@ export function installEngine(stubs: Stubs = {}): void {
       // 保存した値や地点が前のテストから残らないようにする。
       localStorage.clear()
 
-      const sim = (globalThis as never as { LifeSim: { modules: { Stats: { _data: Record<string, number> } } } }).LifeSim
-      Object.assign(sim.modules.Stats._data, { stamina: 45, kaihenPt: 10, favorability: 0 })
+      const scope = globalThis as never as {
+        LifeSim: { modules: { Stats: { _data: Record<string, number> } } }
+        Progress: { chapter: string; unlocked: boolean; derived: { reads: number } }
+      }
+
+      Object.assign(scope.LifeSim.modules.Stats._data, { stamina: 45, kaihenPt: 10, favorability: 0 })
+      Object.assign(scope.Progress, { chapter: 'prologue', unlocked: true })
+      scope.Progress.derived.reads = 0
 
       for (const key of Object.keys(variableValues)) delete variableValues[Number(key)]
       for (const key of Object.keys(switchValues)) delete switchValues[Number(key)]
       for (const key of Object.keys(owned)) delete owned[Number(key)]
     }
   })
+}
+
+/** 指定した名前のコンストラクタを持つように見せる。型の除外規則を試すため。 */
+function named(name: string, fields: Record<string, unknown>) {
+  return Object.assign(Object.create({ constructor: { name } }), fields)
+}
+
+/** 列挙できない自前のプロパティ。Object.keys では出てこない。 */
+function hiddenHolder() {
+  const holder = {}
+  Object.defineProperty(holder, 'secretPoints', { value: 1234, writable: true, enumerable: false })
+  return holder
+}
+
+/** ゲッター越しの値。歩くときに呼ぶと副作用のあるゲームがある。 */
+class Derived {
+  _base = 50
+  reads = 0
+
+  get doubled(): number {
+    this.reads += 1
+    return this._base * 2
+  }
 }
 
 function makeActor(name: string, id: number) {

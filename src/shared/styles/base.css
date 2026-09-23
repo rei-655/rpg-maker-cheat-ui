@@ -32,13 +32,13 @@
     --danger: #f85149;
 
     --radius: 5px;
-    --row-h: 28px;
+    --row-h: 30px;
 
     --font: "Segoe UI", Pretendard, "Malgun Gothic", system-ui, -apple-system, sans-serif;
     --mono: "JetBrains Mono", "Cascadia Mono", Consolas, D2Coding, ui-monospace, monospace;
 
     font-family: var(--font);
-    font-size: 13px;
+    font-size: 14px;
     line-height: 1.45;
     color: var(--text);
     -webkit-font-smoothing: antialiased;
@@ -53,7 +53,7 @@
 #cheat-ui-root .mono {
     font-family: var(--mono);
     font-variant-numeric: tabular-nums;
-    font-size: 12px;
+    font-size: 13px;
 }
 
 #cheat-ui-root .muted { color: var(--text-muted); }
@@ -95,12 +95,12 @@
 
 #cheat-ui-root .titlebar:active { cursor: grabbing; }
 #cheat-ui-root .titlebar__grip { color: var(--text-faint); display: flex; }
-#cheat-ui-root .titlebar__crumb { font-size: 12px; color: var(--text-muted); }
+#cheat-ui-root .titlebar__crumb { font-size: 13px; color: var(--text-muted); }
 #cheat-ui-root .titlebar__crumb b { color: var(--text); font-weight: 600; }
 
 #cheat-ui-root .titlebar__hint {
     font-family: var(--mono);
-    font-size: 11px;
+    font-size: 12.5px;
     color: var(--text-faint);
 }
 
@@ -140,7 +140,7 @@
 
 #cheat-ui-root .nav__group {
     padding: 10px 12px 4px;
-    font-size: 10px;
+    font-size: 12px;
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--text-faint);
@@ -160,7 +160,7 @@
     background: transparent;
     color: var(--text-muted);
     font-family: inherit;
-    font-size: 13px;
+    font-size: 14px;
     text-align: left;
     white-space: nowrap;
     cursor: pointer;
@@ -227,7 +227,7 @@
     gap: 8px;
     padding: 7px 10px;
     border-bottom: 1px solid var(--border);
-    font-size: 11px;
+    font-size: 12.5px;
     font-weight: 600;
     letter-spacing: 0.04em;
     text-transform: uppercase;
@@ -235,7 +235,7 @@
 }
 
 #cheat-ui-root .section__body { padding: 10px; }
-#cheat-ui-root .hint { font-size: 12px; color: var(--text-faint); }
+#cheat-ui-root .hint { font-size: 13px; color: var(--text-faint); }
 
 #cheat-ui-root .stats { display: flex; align-items: stretch; flex-wrap: wrap; }
 
@@ -249,7 +249,7 @@
 #cheat-ui-root .stat:last-child { border-right: 0; margin-right: 0; padding-right: 0; }
 
 #cheat-ui-root .stat__label {
-    font-size: 10px;
+    font-size: 12px;
     letter-spacing: 0.06em;
     text-transform: uppercase;
     color: var(--text-faint);
@@ -257,7 +257,7 @@
 
 #cheat-ui-root .stat__value {
     font-family: var(--mono);
-    font-size: 17px;
+    font-size: 18px;
     font-variant-numeric: tabular-nums;
     line-height: 1.25;
 }
@@ -266,7 +266,7 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    font-size: 12px;
+    font-size: 13px;
     white-space: nowrap;
 }
 
@@ -287,20 +287,25 @@
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    height: 19px;
+    height: 21px;
     padding: 0 6px;
-    border: 1px solid var(--border);
-    border-radius: 3px;
+    border: 0;
+    border-radius: var(--radius);
     background: var(--bg-active);
-    color: var(--text-muted);
-    font-size: 11px;
+    color: var(--text);
+    font-size: 12.5px;
     white-space: nowrap;
 }
 
-#cheat-ui-root .pill--ok { border-color: #1f6f34; background: #10331c; color: #7ee29a; }
-#cheat-ui-root .pill--warn { border-color: #6b5216; background: #322611; color: #e3b341; }
-#cheat-ui-root .pill--danger { border-color: #7d2c28; background: #35191a; color: #ff8079; }
-#cheat-ui-root .pill--accent { border-color: #1f4a80; background: #10233b; color: #79b8ff; }
+/*
+ * 文字は本文色のまま、背景の色味だけで状態を分ける。枠まで状態色にすると
+ * 表一枚に色の破片が数十個できて、どれが緊急なのか読めなくなる。
+ * 暗い地の上では彩度を落とす。高彩度の文字は蛍光ペンに見える。
+ */
+#cheat-ui-root .pill--ok { background: #1a3222; }
+#cheat-ui-root .pill--warn { background: #332914; }
+#cheat-ui-root .pill--danger { background: #3a1e1d; }
+#cheat-ui-root .pill--accent { background: #1a2740; }
 
 #cheat-ui-root .pill__x {
     display: inline-flex;
@@ -319,14 +324,14 @@
     align-items: center;
     justify-content: center;
     gap: 5px;
-    height: 26px;
+    height: 28px;
     padding: 0 9px;
     border: 1px solid var(--border);
     border-radius: var(--radius);
     background: var(--bg-active);
     color: var(--text);
     font-family: inherit;
-    font-size: 12px;
+    font-size: 13px;
     white-space: nowrap;
     cursor: pointer;
 }
@@ -346,26 +351,26 @@
 #cheat-ui-root .btn--danger { border-color: #7d2c28; color: #ff8079; }
 #cheat-ui-root .btn--danger:hover { background: #35191a; }
 #cheat-ui-root .btn--icon { width: 26px; padding: 0; }
-#cheat-ui-root .btn--sm { height: 22px; padding: 0 7px; font-size: 11px; }
+#cheat-ui-root .btn--sm { height: 24px; padding: 0 7px; font-size: 12.5px; }
 #cheat-ui-root .btn--sm.btn--icon { width: 22px; padding: 0; }
 #cheat-ui-root .btn--ghost { background: transparent; border-color: transparent; color: var(--text-muted); }
 #cheat-ui-root .btn--ghost:hover { background: var(--bg-hover); color: var(--text); border-color: transparent; }
 #cheat-ui-root .btn-group { display: inline-flex; gap: 5px; flex-wrap: wrap; }
 
 #cheat-ui-root .input {
-    height: 26px;
+    height: 28px;
     padding: 0 7px;
     border: 1px solid var(--border);
     border-radius: var(--radius);
     background: var(--bg-input);
     color: var(--text);
     font-family: var(--mono);
-    font-size: 12px;
+    font-size: 13px;
     min-width: 0;
 }
 
 #cheat-ui-root .input:focus { outline: none; border-color: var(--accent); }
-#cheat-ui-root .input--text { font-family: var(--font); font-size: 13px; }
+#cheat-ui-root .input--text { font-family: var(--font); font-size: 14px; }
 #cheat-ui-root .input--num { text-align: right; }
 #cheat-ui-root .input--flash { border-color: var(--ok); }
 #cheat-ui-root .input--invalid { border-color: var(--danger); }
@@ -375,7 +380,7 @@
 #cheat-ui-root .field { display: inline-flex; flex-direction: column; gap: 3px; }
 
 #cheat-ui-root .field__label {
-    font-size: 10px;
+    font-size: 12px;
     letter-spacing: 0.06em;
     text-transform: uppercase;
     color: var(--text-faint);
@@ -404,7 +409,7 @@
     background: transparent;
     color: var(--text);
     font-family: inherit;
-    font-size: 13px;
+    font-size: 14px;
     outline: none;
 }
 
@@ -412,7 +417,7 @@
 
 #cheat-ui-root .search__count {
     font-family: var(--mono);
-    font-size: 11px;
+    font-size: 12.5px;
     color: var(--text-faint);
     white-space: nowrap;
 }
@@ -421,7 +426,7 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    font-size: 12px;
+    font-size: 13px;
     color: var(--text-muted);
     white-space: nowrap;
     user-select: none;
@@ -452,14 +457,14 @@
 #cheat-ui-root .chips { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 
 #cheat-ui-root .chip {
-    height: 22px;
+    height: 24px;
     padding: 0 9px;
     border: 1px solid var(--border);
     border-radius: 11px;
     background: transparent;
     color: var(--text-muted);
     font-family: inherit;
-    font-size: 12px;
+    font-size: 13px;
     white-space: nowrap;
     cursor: pointer;
 }
@@ -468,7 +473,7 @@
 #cheat-ui-root .chip--active { border-color: var(--accent); color: #79b8ff; background: #10233b; }
 
 #cheat-ui-root .chips__label {
-    font-size: 11px;
+    font-size: 12.5px;
     color: var(--text-faint);
     white-space: nowrap;
 }
@@ -493,7 +498,7 @@
     background: transparent;
     color: var(--text-muted);
     font-family: inherit;
-    font-size: 12px;
+    font-size: 13px;
     cursor: pointer;
 }
 
@@ -502,7 +507,7 @@
 
 #cheat-ui-root .tab__count {
     font-family: var(--mono);
-    font-size: 11px;
+    font-size: 12.5px;
     color: var(--text-faint);
     margin-left: 5px;
 }
@@ -517,17 +522,17 @@
 #cheat-ui-root table.table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 12px;
+    font-size: 13px;
 }
 
 #cheat-ui-root .table th {
     position: sticky;
     top: 0;
     z-index: 1;
-    height: 26px;
+    height: 28px;
     padding: 0 8px;
     text-align: left;
-    font-size: 11px;
+    font-size: 12.5px;
     font-weight: 600;
     letter-spacing: 0.03em;
     text-transform: uppercase;
@@ -547,7 +552,20 @@
     padding: 0 8px;
     border-bottom: 1px solid var(--border-soft);
     vertical-align: middle;
+    white-space: nowrap;
 }
+
+/* 長い文章の列だけ例外。折り返しても比較の役には立つ。 */
+#cheat-ui-root .table td.wrap { white-space: normal; }
+
+#cheat-ui-root .link {
+    cursor: pointer;
+    text-decoration: underline;
+    text-decoration-color: var(--border-strong);
+    text-underline-offset: 2px;
+}
+
+#cheat-ui-root .link:hover { color: var(--text); text-decoration-color: var(--accent); }
 
 #cheat-ui-root .table tbody tr:last-child td { border-bottom: 0; }
 #cheat-ui-root .table tbody tr:hover td { background: var(--bg-hover); }
@@ -558,7 +576,7 @@
 
 #cheat-ui-root .cell-id {
     font-family: var(--mono);
-    font-size: 11px;
+    font-size: 12.5px;
     color: var(--text-faint);
 }
 
@@ -566,7 +584,7 @@
     padding: 26px 12px;
     text-align: center;
     color: var(--text-faint);
-    font-size: 12px;
+    font-size: 13px;
 }
 
 #cheat-ui-root .pager {
@@ -575,7 +593,7 @@
     justify-content: flex-end;
     gap: 8px;
     padding: 0 2px 6px;
-    font-size: 11px;
+    font-size: 12.5px;
     color: var(--text-muted);
 }
 
@@ -594,7 +612,7 @@
     gap: 8px;
     padding: 7px 10px;
     border-bottom: 1px solid var(--border);
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 600;
 }
 
@@ -605,7 +623,7 @@
     grid-template-columns: minmax(84px, max-content) 1fr;
     gap: 5px 14px;
     align-items: center;
-    font-size: 12px;
+    font-size: 13px;
 }
 
 #cheat-ui-root .kv__k { color: var(--text-faint); }
@@ -636,11 +654,11 @@
 #cheat-ui-root .dialog__head {
     padding: 9px 12px;
     border-bottom: 1px solid var(--border);
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 600;
 }
 
-#cheat-ui-root .dialog__body { padding: 12px; font-size: 13px; color: var(--text-muted); }
+#cheat-ui-root .dialog__body { padding: 12px; font-size: 14px; color: var(--text-muted); }
 
 #cheat-ui-root .dialog__foot {
     display: flex;
@@ -674,7 +692,7 @@
     border-radius: var(--radius);
     background: var(--bg-raised);
     box-shadow: 0 4px 14px rgba(1, 4, 9, 0.6);
-    font-size: 12px;
+    font-size: 13px;
     pointer-events: auto;
 }
 
@@ -717,8 +735,8 @@
 
 #cheat-ui-root .hub__card:hover { background: var(--bg-hover); border-color: var(--border-strong); }
 #cheat-ui-root .hub__card svg { color: var(--text-muted); margin-top: 1px; flex: 0 0 auto; }
-#cheat-ui-root .hub__name { font-size: 13px; font-weight: 600; }
-#cheat-ui-root .hub__desc { font-size: 11px; color: var(--text-faint); margin-top: 1px; }
+#cheat-ui-root .hub__name { font-size: 14px; font-weight: 600; }
+#cheat-ui-root .hub__desc { font-size: 12.5px; color: var(--text-faint); margin-top: 1px; }
 
 #cheat-ui-root .keycap {
     display: inline-block;
@@ -730,7 +748,7 @@
     background: var(--bg-active);
     color: var(--text);
     font-family: var(--mono);
-    font-size: 11px;
+    font-size: 12.5px;
     text-align: center;
     cursor: pointer;
 }
@@ -757,11 +775,11 @@
     align-items: center;
     gap: 16px;
     flex: 0 0 26px;
-    height: 26px;
+    height: 28px;
     padding: 0 10px;
     background: var(--bg-raised);
     border-top: 1px solid var(--border);
-    font-size: 11px;
+    font-size: 12.5px;
     color: var(--text-muted);
 }
 
@@ -787,7 +805,7 @@
 }
 
 #cheat-ui-root .step--on { opacity: 1; border-color: var(--accent); }
-#cheat-ui-root .step__label { font-size: 12px; font-weight: 600; }
+#cheat-ui-root .step__label { font-size: 13px; font-weight: 600; }
 
 #cheat-ui-root .big {
     display: inline-flex;
@@ -800,7 +818,7 @@
     background: var(--bg-active);
     color: var(--text);
     font-family: inherit;
-    font-size: 13px;
+    font-size: 14px;
     cursor: pointer;
 }
 
@@ -809,7 +827,7 @@
 #cheat-ui-root .big--on { border-color: var(--ok); color: #7ee29a; }
 #cheat-ui-root .big--on svg { color: var(--ok); }
 #cheat-ui-root .big svg { color: var(--text-muted); }
-#cheat-ui-root .big__state { font-family: var(--mono); font-size: 11px; color: var(--text-faint); margin-left: 4px; }
+#cheat-ui-root .big__state { font-family: var(--mono); font-size: 12.5px; color: var(--text-faint); margin-left: 4px; }
 
 #cheat-ui-root .params {
     display: grid;
@@ -827,7 +845,7 @@
 
 #cheat-ui-root .more > summary {
     cursor: pointer;
-    font-size: 12px;
+    font-size: 13px;
     color: var(--text-muted);
     user-select: none;
 }

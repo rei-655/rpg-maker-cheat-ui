@@ -2,15 +2,18 @@
 import { onMounted, reactive } from 'vue'
 import AppIcon from '@/shared/ui/AppIcon.vue'
 import ValueInput from '@/shared/ui/ValueInput.vue'
+import SavedValues from '@/features/data/SavedValues.vue'
 import { homeCards } from '@/app/panels'
 import { MAX_GOLD, battle, encounters, godMode, movement, scenes, wallet } from '@/engine/cheats'
 import { partyMembers } from '@/engine/globals'
 import { toInt } from '@/shared/lib/coerce'
 import { toast } from '@/shared/composables/useToast'
 import { useSession } from '@/stores/session'
+import { useWatches } from '@/stores/watches'
 import { t } from '@/i18n'
 
 const session = useSession()
+const watches = useWatches()
 const cards = homeCards()
 
 const state = reactive({ gold: 0, noClip: false, noEncounter: false, god: 0, party: 0 })
@@ -20,11 +23,19 @@ onMounted(refresh)
 function refresh(): void {
   const members = partyMembers()
 
+  watches.refresh()
+
   state.gold = wallet.gold()
   state.noClip = movement.noClip()
   state.noEncounter = encounters.disabled()
   state.party = members.length
   state.god = members.filter((actor) => godMode.isOn(actor)).length
+}
+
+/** 一覧の管理はデータ画面が受け持つ。ホームからはそこへ送るだけ。 */
+function openFinder(): void {
+  session.view('data').tab = 'finder'
+  session.panelId = 'data'
 }
 
 function setGold(raw: string | number): void {
@@ -88,6 +99,18 @@ function toggleEncounters(): void {
     </div>
 
     <div class="content__scroll">
+      <div v-if="watches.rows.length > 0" class="section">
+        <div class="section__head">
+          <span>{{ t('finder.saved') }}</span>
+          <span class="tab__count">{{ watches.rows.length }}</span>
+          <span class="spacer" />
+          <button class="btn btn--sm" @click="openFinder">{{ t('watch.manage') }}</button>
+        </div>
+        <div class="section__body">
+          <SavedValues compact :limit="6" @more="openFinder" />
+        </div>
+      </div>
+
       <div class="section">
         <div class="section__head">
           <span>{{ t('home.money') }}</span>

@@ -7,6 +7,7 @@ import { switchNames, switches } from '@/engine/globals'
 import { matches, parseQuery } from '@/shared/lib/query'
 import { confirm } from '@/shared/composables/useConfirm'
 import { toast } from '@/shared/composables/useToast'
+import { useWatches } from '@/stores/watches'
 import { useSession } from '@/stores/session'
 import { t } from '@/i18n'
 
@@ -19,8 +20,11 @@ interface Row {
 const columns = computed<Column[]>(() => [
   { key: 'id', label: t('col.id'), width: 64, align: 'right' },
   { key: 'name', label: t('col.name'), width: 320 },
-  { key: 'value', label: t('col.value'), width: 96 }
+  { key: 'value', label: t('col.value'), width: 96 },
+  { key: 'actions', label: '', width: 48, sortable: false }
 ])
+
+const watches = useWatches()
 
 const view = useSession().view('data.switches', {
   widths: { id: 64, name: 320 },
@@ -45,6 +49,12 @@ function refresh(): void {
   rows.value = switchNames()
     .map((name, id) => ({ id, name: name ?? '', value: id > 0 && switches().value(id) }))
     .slice(1)
+}
+
+function keep(row: Row): void {
+  const name = row.name || `#${row.id}`
+
+  if (watches.keep({ kind: 'switch', id: row.id, name })) toast.success(t('finder.savedToast', { name }))
 }
 
 function toggle(row: Row): void {
@@ -126,6 +136,16 @@ async function setAll(value: boolean): Promise<void> {
         <button class="btn btn--sm" :title="t(row.value ? 'data.turnOff' : 'data.turnOn')" @click="toggle(row)">
           <span class="dot" :class="row.value ? 'dot-ok' : 'dot-muted'" />
           {{ t(row.value ? 'common.on' : 'common.off') }}
+        </button>
+      </template>
+      <template #actions="{ row }">
+        <button
+          class="btn btn--sm btn--icon"
+          :disabled="watches.isSaved(`sw:${row.id}`)"
+          :title="t(watches.isSaved(`sw:${row.id}`) ? 'finder.alreadySaved' : 'finder.save')"
+          @click.stop="keep(row)"
+        >
+          <AppIcon :name="watches.isSaved(`sw:${row.id}`) ? 'check' : 'save'" :size="13" />
         </button>
       </template>
     </DataTable>

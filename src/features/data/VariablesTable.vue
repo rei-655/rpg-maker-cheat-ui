@@ -9,6 +9,7 @@ import { matches, parseQuery } from '@/shared/lib/query'
 import { coerceLike } from '@/shared/lib/coerce'
 import { REFINEMENTS, ValueScan, type Refinement } from '@/shared/lib/scan'
 import { toast } from '@/shared/composables/useToast'
+import { useWatches } from '@/stores/watches'
 import { useSession } from '@/stores/session'
 import { t } from '@/i18n'
 
@@ -21,8 +22,11 @@ interface Row {
 const columns = computed<Column[]>(() => [
   { key: 'id', label: t('col.id'), width: 64, align: 'right' },
   { key: 'name', label: t('col.name'), width: 260 },
-  { key: 'value', label: t('col.value'), align: 'right' }
+  { key: 'value', label: t('col.value'), align: 'right' },
+  { key: 'actions', label: '', width: 48, sortable: false }
 ])
+
+const watches = useWatches()
 
 // 名前のない枠が大半を占めるゲームが多い（701 枠中 82 個だけ、など）。
 // 既定で隠し、検索したときだけ全体から探す。
@@ -58,6 +62,12 @@ function refresh(): void {
     .slice(1)
 
   syncScan()
+}
+
+function keep(row: Row): void {
+  const name = row.name || `#${row.id}`
+
+  if (watches.keep({ kind: 'variable', id: row.id, name })) toast.success(t('finder.savedToast', { name }))
 }
 
 function pin(id: number): void {
@@ -188,6 +198,16 @@ function syncScan(): void {
       </template>
       <template #value="{ row }">
         <ValueInput :value="row.value as number" @edit-start="pin(row.id)" @commit="commit(row, $event)" />
+      </template>
+      <template #actions="{ row }">
+        <button
+          class="btn btn--sm btn--icon"
+          :disabled="watches.isSaved(`var:${row.id}`)"
+          :title="t(watches.isSaved(`var:${row.id}`) ? 'finder.alreadySaved' : 'finder.save')"
+          @click.stop="keep(row)"
+        >
+          <AppIcon :name="watches.isSaved(`var:${row.id}`) ? 'check' : 'save'" :size="13" />
+        </button>
       </template>
     </DataTable>
   </div>

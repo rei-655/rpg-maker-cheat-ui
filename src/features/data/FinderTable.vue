@@ -4,40 +4,51 @@ import AppIcon from '@/shared/ui/AppIcon.vue'
 import SearchBox from '@/shared/ui/SearchBox.vue'
 import ValueInput from '@/shared/ui/ValueInput.vue'
 import DataTable, { type Column } from '@/shared/ui/DataTable.vue'
-import { describe, probe, readProbe, writeProbe, type Field, type Probe, type Structure } from '@/engine/probe'
+import {
+  describe,
+  probe,
+  readProbe,
+  writeProbe,
+  type Field,
+  type Probe,
+  type ProbeKind,
+  type Structure
+} from '@/engine/probe'
 import { matches, parseQuery } from '@/shared/lib/query'
 import { coerceLike } from '@/shared/lib/coerce'
 import { REFINEMENTS, ValueScan, type Refinement } from '@/shared/lib/scan'
-import * as watchlist from './watchlist'
-import type { Watch, WatchRow } from './watchlist'
+import SavedValues from './SavedValues.vue'
+import type { WatchRow } from './watchlist'
+import { useWatches } from '@/stores/watches'
 import { toast } from '@/shared/composables/useToast'
 import { useSession } from '@/stores/session'
 import { t } from '@/i18n'
 
-interface Row extends Probe {
-  value: number
-}
+const KINDS: ProbeKind[] = ['number', 'string', 'boolean']
 
 const columns = computed<Column[]>(() => [
   { key: 'owner', label: t('col.where'), width: 300, mono: true },
-  { key: 'key', label: t('col.field'), width: 180, mono: true },
+  { key: 'key', label: t('col.field'), width: 170, mono: true },
   { key: 'value', label: t('col.value'), align: 'right' },
   { key: 'actions', label: '', width: 48, sortable: false }
 ])
 
 const fieldColumns = computed<Column[]>(() => [
-  { key: 'key', label: t('col.field'), width: 200, mono: true },
-  { key: 'kind', label: t('col.kind'), width: 90, sortable: false },
+  { key: 'key', label: t('col.field'), width: 190, mono: true },
+  { key: 'kind', label: t('col.kind'), width: 84, sortable: false },
   { key: 'text', label: t('col.value'), sortable: false },
   { key: 'actions', label: '', width: 48, sortable: false }
 ])
 
 const view = useSession().view('data.finder', {
   sort: { key: 'owner', desc: false },
-  widths: { owner: 300, key: 180 }
+  widths: { owner: 300, key: 170 },
+  // 既定は数値だけ。文字列と真偽値は件数が多く、目的の値を埋めてしまう。
+  flags: { number: true }
 })
 
-const rows = ref<Row[]>([])
+const watches = useWatches()
+const rows = ref<Probe[]>([])
 const keysOf = new Map<string, string[]>()
 
 // 詳細は「見つけた値の入れ物」を指す。潜るとここだけが動く。
@@ -45,30 +56,36 @@ const cursor = ref<string[]>([])
 const structure = ref<Structure | null>(null)
 const selected = ref<string | null>(null)
 
-// 保存した値。絞り込みは手間がかかるので、たどり着いた場所は覚えておく。
-const watches = ref<Watch[]>([])
-const watchRows = ref<WatchRow[]>([])
-
 const scanner = new ValueScan<string>((path) => readProbe(keysOf.get(path) ?? []))
 const scan = reactive({ active: false, count: 0, passes: 0 })
 const operand = ref('')
 
+/** 型の絞り込みは、どれも押していないときは全部見せる。空の表より親切。 */
+const kinds = computed(() => {
+  const picked = KINDS.filter((kind) => view.flags[kind])
+  return picked.length > 0 ? picked : KINDS
+})
+
+const counts = computed(() => {
+  const tally: Record<string, number> = { number: 0, string: 0, boolean: 0 }
+  for (const row of rows.value) tally[row.kind] += 1
+  return tally
+})
+
 const shown = computed(() => {
   const query = parseQuery(view.search)
+  const allowed = kinds.value
 
   return rows.value.filter((row) => {
+    if (allowed.indexOf(row.kind) < 0) return false
     if (view.flags.nonZero && !row.value) return false
     if (scan.active && view.flags.onlyCandidates !== false && !scanner.has(row.path)) return false
 
-    return matches(query, { id: row.path, value: row.value, texts: [row.path] })
+    return matches(query, { id: row.path, value: row.value, texts: [row.path, String(row.value)] })
   })
 })
 
-onMounted(() => {
-  watches.value = watchlist.load()
-  readWatches()
-  collect()
-})
+onMounted(collect)
 
 /** グローバルを歩き直す。ゲームが進むと入れ物そのものが増えることがある。 */
 function collect(): void {
@@ -76,10 +93,10 @@ function collect(): void {
 
   rows.value = probe().map((entry) => {
     keysOf.set(entry.path, entry.keys)
-    return entry as Row
+    return entry
   })
 
-  readWatches()
+  watches.refresh()
   syncScan()
 }
 
@@ -87,75 +104,50 @@ function collect(): void {
 function sync(): void {
   for (const row of rows.value) {
     const current = readProbe(row.keys)
-    if (typeof current === 'number') row.value = current
+    if (typeof current === row.kind) row.value = current as Probe['value']
   }
 
-  readWatches()
+  watches.refresh()
 }
 
-function commit(row: Row, raw: string): void {
-  const next = coerceLike(raw, row.value)
-
-  if (!writeProbe(row.keys, next)) {
+function commit(row: Probe, raw: string): void {
+  if (!writeProbe(row.keys, coerceLike(raw, row.value))) {
     toast.warn(t('finder.writeFailed'))
     return
   }
 
-  const current = readProbe(row.keys)
-  if (typeof current === 'number') row.value = current
-
-  readWatches()
+  sync()
   if (selected.value === row.path) refreshStructure()
+}
+
+/** テンプレートで型を絞ると | が Vue のフィルタと読まれる。ここで済ませる。 */
+function editable(row: Probe): string | number {
+  return row.kind === 'number' ? (row.value as number) : String(row.value)
+}
+
+function toggle(row: Probe): void {
+  commit(row, row.value === true ? 'false' : 'true')
 }
 
 // ----------------------------------------------------------------
 // 保存
 // ----------------------------------------------------------------
 
-function readWatches(): void {
-  watchRows.value = watchlist.resolveAll(watches.value)
-}
-
-function isSaved(path: string): boolean {
-  return watchlist.saved(watches.value, path)
-}
-
-function keep(target: Probe | { path: string; keys: string[]; key: string }): void {
-  if (isSaved(target.path)) return
-
-  watches.value = watchlist.add(watches.value, target as Probe)
-  readWatches()
-  toast.success(t('finder.savedToast', { name: target.key }))
+function keep(path: string, keys: string[], name: string): void {
+  if (watches.keep({ kind: 'path', keys, name })) toast.success(t('finder.savedToast', { name }))
+  else if (watches.isSaved(path)) toast.info(t('finder.alreadySaved'))
 }
 
 function keepField(field: Field): void {
   const keys = cursor.value.concat(field.key)
-  keep({ path: keys.join('.'), keys, key: field.key })
+  keep(keys.join('.'), keys, field.key)
 }
 
-function drop(entry: WatchRow): void {
-  watches.value = watchlist.remove(watches.value, entry.key)
-  readWatches()
-}
+function openSaved(row: WatchRow): void {
+  if (row.kind !== 'path') return
 
-function renameWatch(entry: WatchRow, name: string): void {
-  watches.value = watchlist.rename(watches.value, entry.key, name)
-  readWatches()
-}
-
-function commitWatch(entry: WatchRow, raw: string): void {
-  if (!writeProbe(entry.keys, coerceLike(raw, entry.field.value))) {
-    toast.warn(t('finder.writeFailed'))
-    return
-  }
-
-  sync()
-  if (selected.value) refreshStructure()
-}
-
-function openWatch(entry: WatchRow): void {
-  cursor.value = entry.keys.slice(0, -1)
-  selected.value = entry.path
+  cursor.value = row.keys.slice(0, -1)
+  selected.value = row.ref
   refreshStructure()
 }
 
@@ -163,7 +155,7 @@ function openWatch(entry: WatchRow): void {
 // 構造
 // ----------------------------------------------------------------
 
-function select(row: Row): void {
+function select(row: Probe): void {
   selected.value = row.path
   cursor.value = row.keys.slice(0, -1)
   refreshStructure()
@@ -203,12 +195,16 @@ function commitField(field: Field, raw: string): void {
   sync()
 }
 
+function toggleField(field: Field): void {
+  commitField(field, field.value === true ? 'false' : 'true')
+}
+
 // ----------------------------------------------------------------
 // 絞り込み
 // ----------------------------------------------------------------
 
 function startScan(): void {
-  scanner.start(rows.value.map((row) => row.path))
+  scanner.start(shown.value.map((row) => row.path))
   view.flags.onlyCandidates = true
   syncScan()
   toast.info(t('finder.scanStarted', { count: scanner.count }))
@@ -246,59 +242,13 @@ function syncScan(): void {
     <div class="section">
       <div class="section__head">
         <span>{{ t('finder.saved') }}</span>
-        <span v-if="watchRows.length > 0" class="tab__count">{{ watchRows.length }}</span>
+        <span v-if="watches.rows.length > 0" class="tab__count">{{ watches.rows.length }}</span>
         <span class="spacer" />
         <span class="hint">{{ t('finder.savedHint') }}</span>
       </div>
 
       <div class="section__body">
-        <div v-if="watchRows.length === 0" class="empty">{{ t('finder.noSaved') }}</div>
-
-        <div v-else class="table-wrap">
-          <table class="table">
-            <colgroup>
-              <col style="width: 200px" />
-              <col />
-              <col style="width: 140px" />
-              <col style="width: 48px" />
-            </colgroup>
-            <thead>
-              <tr>
-                <th>{{ t('col.name') }}</th>
-                <th>{{ t('col.where') }}</th>
-                <th class="num">{{ t('col.value') }}</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="entry in watchRows" :key="entry.key">
-                <td>
-                  <ValueInput :value="entry.name" text @commit="renameWatch(entry, $event)" />
-                </td>
-                <td>
-                  <span class="mono faint clickable" :title="t('finder.openSaved')" @click="openWatch(entry)">
-                    {{ entry.path }}
-                  </span>
-                </td>
-                <td class="num">
-                  <ValueInput
-                    v-if="entry.found && entry.field.editable"
-                    :value="entry.field.text"
-                    :text="entry.field.kind !== 'number'"
-                    @commit="commitWatch(entry, $event)"
-                  />
-                  <span v-else-if="entry.found" class="mono faint">{{ entry.field.text }}</span>
-                  <span v-else class="pill pill--warn">{{ t('finder.missing') }}</span>
-                </td>
-                <td>
-                  <button class="btn btn--sm btn--icon" :title="t('common.delete')" @click="drop(entry)">
-                    <AppIcon name="trash" :size="13" />
-                  </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+        <SavedValues @open="openSaved" />
       </div>
     </div>
 
@@ -312,12 +262,26 @@ function syncScan(): void {
       />
 
       <div class="chips">
+        <span class="chips__label">{{ t('finder.kind') }}</span>
+        <button
+          v-for="kind in KINDS"
+          :key="kind"
+          class="chip"
+          :class="{ 'chip--active': view.flags[kind] }"
+          :title="t('finder.kindHint')"
+          @click="view.flags[kind] = !view.flags[kind]"
+        >
+          {{ t(`kind.${kind}`) }} {{ counts[kind] }}
+        </button>
+
+        <span class="chips__sep" />
+
         <button
           class="chip"
           :class="{ 'chip--active': view.flags.nonZero }"
           @click="view.flags.nonZero = !view.flags.nonZero"
         >
-          {{ t('data.nonZero') }}
+          {{ t('finder.notEmpty') }}
         </button>
         <button
           v-if="scan.active"
@@ -388,16 +352,26 @@ function syncScan(): void {
         <span class="mono">{{ row.key }}</span>
       </template>
       <template #value="{ row }">
-        <ValueInput :value="row.value" @commit="commit(row, $event)" @click.stop />
+        <button v-if="row.kind === 'boolean'" class="btn btn--sm" @click.stop="toggle(row)">
+          <span class="dot" :class="row.value === true ? 'dot-ok' : 'dot-muted'" />
+          {{ t(row.value === true ? 'common.on' : 'common.off') }}
+        </button>
+        <ValueInput
+          v-else
+          :value="editable(row)"
+          :text="row.kind === 'string'"
+          @commit="commit(row, $event)"
+          @click.stop
+        />
       </template>
       <template #actions="{ row }">
         <button
           class="btn btn--sm btn--icon"
-          :disabled="isSaved(row.path)"
-          :title="t(isSaved(row.path) ? 'finder.alreadySaved' : 'finder.save')"
-          @click.stop="keep(row)"
+          :disabled="watches.isSaved(row.path)"
+          :title="t(watches.isSaved(row.path) ? 'finder.alreadySaved' : 'finder.save')"
+          @click.stop="keep(row.path, row.keys, row.key)"
         >
-          <AppIcon :name="isSaved(row.path) ? 'check' : 'save'" :size="13" />
+          <AppIcon :name="watches.isSaved(row.path) ? 'check' : 'save'" :size="13" />
         </button>
       </template>
     </DataTable>
@@ -445,10 +419,17 @@ function syncScan(): void {
                 @click="drill(field)"
               >
                 <td><span class="mono">{{ field.key }}</span></td>
-                <td><span class="faint">{{ field.kind }}</span></td>
                 <td>
+                  <span class="faint">{{ field.kind }}</span>
+                  <span v-if="field.accessor" class="faint" :title="t('finder.accessor')"> ·</span>
+                </td>
+                <td>
+                  <button v-if="field.kind === 'boolean'" class="btn btn--sm" @click.stop="toggleField(field)">
+                    <span class="dot" :class="field.value === true ? 'dot-ok' : 'dot-muted'" />
+                    {{ t(field.value === true ? 'common.on' : 'common.off') }}
+                  </button>
                   <ValueInput
-                    v-if="field.editable"
+                    v-else-if="field.editable"
                     :value="field.text"
                     :text="field.kind !== 'number'"
                     @commit="commitField(field, $event)"
@@ -460,11 +441,11 @@ function syncScan(): void {
                   <button
                     v-if="field.editable"
                     class="btn btn--sm btn--icon"
-                    :disabled="isSaved(cursor.concat(field.key).join('.'))"
-                    :title="t(isSaved(cursor.concat(field.key).join('.')) ? 'finder.alreadySaved' : 'finder.save')"
+                    :disabled="watches.isSaved(cursor.concat(field.key).join('.'))"
+                    :title="t(watches.isSaved(cursor.concat(field.key).join('.')) ? 'finder.alreadySaved' : 'finder.save')"
                     @click.stop="keepField(field)"
                   >
-                    <AppIcon :name="isSaved(cursor.concat(field.key).join('.')) ? 'check' : 'save'" :size="13" />
+                    <AppIcon :name="watches.isSaved(cursor.concat(field.key).join('.')) ? 'check' : 'save'" :size="13" />
                   </button>
                 </td>
               </tr>
@@ -474,6 +455,10 @@ function syncScan(): void {
             </tbody>
           </table>
         </div>
+
+        <p v-if="structure.hidden > 0" class="hint" style="margin: 8px 0 0">
+          {{ t('finder.hidden', { count: structure.hidden }) }}
+        </p>
       </div>
     </div>
   </div>

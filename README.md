@@ -96,6 +96,14 @@ LifeSim.modules.Stats._limits...   max            90
 Search and the value scan work the same as on variables, so you can hunt the
 number the game is showing you and narrow it down by playing.
 
+Not every cheat is a number. A game may keep an unlock as a flag and a chapter as
+text, so **Number · Text · On/off** filter the list by type, each with a count.
+Numbers show by default because the other two are numerous. A flag gets a toggle
+instead of asking you to type `true`. The walk also reaches into `Map` entries and
+properties a plugin hid from enumeration, and it never calls a getter — that could
+move the game — though the structure view does, since there you are looking at one
+object on purpose. A getter with no setter is shown but not editable.
+
 Click a row and the panel below shows **what surrounds that value** — every other
 field the same object holds, with its type, editable in place. Nested objects
 open on click and the breadcrumb steps back out, so you can see the shape of the
@@ -107,6 +115,12 @@ where it stays editable and comes back on the next launch — written to
 `cheat-settings/watchlist.json` next to the game, so each game has its own list.
 Give an entry a name of your own; a bare `stamina` says little a week later. If
 the object is not built yet the row says so instead of quietly vanishing.
+
+Variables and switches go in the same list. To you, "the values I keep touching" is
+one set; whether a value is an engine variable or a field inside a plugin is not
+your problem. Those two are written through the engine's own `setValue`, so plugins
+that clamp or react still run. The list also appears at the top of **Home**, because
+that is where you reach for things.
 
 Screens, the database and huge engine internals are skipped on purpose;
 variables and switches have their own tabs.
@@ -279,6 +293,14 @@ LifeSim.modules.Stats._limits...   max            90
 検索と値スキャンは変数のときと同じです。画面に出ている数字を手がかりに、遊び
 ながら絞り込めます。
 
+チートの対象は数値だけではありません。解放を真偽値、章を文字列で持つゲームがある
+ので、**数値 · 文字 · 真偽**で型を絞れます（それぞれ件数つき）。既定が数値なのは、
+ほかの二つが件数が多く目的の値を埋めてしまうためです。真偽値は `true` と打つのでは
+なくトグルで切り替えます。探索は `Map` の中身や、プラグインが列挙から隠した
+プロパティにも届きます。歩いている最中にゲッターは呼びません（ゲームが動いてしまう
+ため）。構造表示では意図して一つのオブジェクトを見ているので読みます。setter の
+ないゲッターは表示しますが編集はできません。
+
 行を押すと下に**その値の周り**が出ます。同じオブジェクトが持つ項目が型つきで
 並び、その場で編集できます。入れ子は押すと潜り、パンくずで戻れるので、見つけた
 値が何の一部なのかが分かります。
@@ -288,6 +310,11 @@ LifeSim.modules.Stats._limits...   max            90
 起動でも残ります。保存先はゲームの隣の `cheat-settings/watchlist.json` なので、
 ゲームごとに別の一覧です。名前は自分で付けられます（`stamina` のままだと一週間後に
 何のことか分かりません）。入れ物がまだ無いときは、黙って消えずにその旨を表示します。
+
+変数とスイッチも同じ一覧に入ります。利用者から見れば「よく触る値」は一つの束で、
+それがエンジンの変数かプラグインの中の項目かは関心の外にあります。この二つは
+エンジンの `setValue` を通して書くので、上限を丸めたり反応したりするプラグインも
+そのまま動きます。一覧は**ホーム**の先頭にも出ます。手が伸びる場所だからです。
 
 画面部品・データベース・エンジン内部は意図的に除いています。変数とスイッチは
 それぞれのタブが受け持ちます。

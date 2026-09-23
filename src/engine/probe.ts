@@ -5,8 +5,14 @@ import { root } from './root'
  *
  * 体力や好感度を $gameVariables に置かず、自前のオブジェクトに持つゲームは
  * 珍しくない。そういう値はツクールの変数一覧には出てこないので、
- * グローバルから辿れるオブジェクトを歩いて数値の置き場所を集める。
+ * グローバルから辿れるオブジェクトを歩いて値の置き場所を集める。
+ *
+ * 数値だけでは足りない。解放フラグを真偽値で、進行段階を文字列で持つ
+ * ゲームもあるので、その場で書き換えられる型はすべて拾う。
  */
+
+export type ProbeKind = 'number' | 'string' | 'boolean'
+export type FieldKind = ProbeKind | 'array' | 'object' | 'map' | 'set' | 'empty' | 'other'
 
 export interface Probe {
   /** 表示用の全体パス。'LifeSim.modules.Stats._data.stamina' */
@@ -16,10 +22,9 @@ export interface Probe {
   /** 入れ物までのパス。 */
   owner: string
   key: string
-  value: number
+  kind: ProbeKind
+  value: number | string | boolean
 }
-
-export type FieldKind = 'number' | 'string' | 'boolean' | 'array' | 'object' | 'empty' | 'other'
 
 export interface Field {
   key: string
@@ -31,20 +36,38 @@ export interface Field {
   editable: boolean
   /** 配列なら長さ、オブジェクトならキー数。 */
   size: number
+  /** ゲッター越しの値。副作用があり得るので歩くときは触らない。 */
+  accessor?: true
+}
+
+/** 一覧の一項目。ゲッター由来かどうかで扱いが変わる。 */
+interface Entry {
+  key: string
+  value: unknown
+  accessor?: true
+  /** setter のないゲッター。書いても戻るので編集させない。 */
+  readOnly?: true
 }
 
 export interface Structure {
   path: string
   type: string
   fields: Field[]
+  /** 表示を打ち切った件数。黙って隠すと数え間違いのもとになる。 */
+  hidden: number
 }
 
-const MAX_DEPTH = 6
-const MAX_NODES = 30000
-const MAX_ARRAY = 64
-const MAX_RESULTS = 4000
+const MAX_DEPTH = 8
+const MAX_NODES = 60000
+const MAX_ARRAY = 256
+/** これより長い配列はドット絵やマップデータ。歩いても意味がない。 */
+const HUGE_ARRAY = 8192
 const MAX_FIELDS = 200
 const TEXT_CAP = 60
+const STRING_CAP = 200
+
+/** 型ごとに上限を分ける。文字列が溢れて数値を押し出すのを防ぐ。 */
+const MAX_RESULTS: Record<ProbeKind, number> = { number: 4000, string: 1500, boolean: 1500 }
 
 /** ブラウザ・PIXI・ツクール本体。歩いても操作したい値は出てこない。 */
 const SKIP_ROOTS = [
@@ -63,30 +86,46 @@ const SKIP_ROOTS = [
   '__CHEAT_UI__', '__CHEAT_UI_LOCALE__', 'cheatDebug'
 ]
 
-/** 描画部品。数千の座標が採れてしまうだけで役に立たない。 */
+/**
+ * 描画まわりのクラス。前方一致で弾くと WindowStats のようなプラグインの
+ * クラスまで道連れになるので、完全一致と _ 区切りだけを見る。
+ */
 const SKIP_TYPES = [
-  'Sprite', 'Window', 'Bitmap', 'Stage', 'Tilemap', 'Scene_', 'Spriteset', 'WebGL',
-  'HTML', 'CSS', 'SVG', 'Canvas', 'Audio', 'Image', 'Node', 'Event', 'Promise', 'Error'
+  'Sprite', 'Window', 'Bitmap', 'Stage', 'Tilemap', 'TilingSprite', 'Graphics',
+  'Container', 'ParticleContainer', 'Texture', 'BaseTexture', 'RenderTexture',
+  'Filter', 'Point', 'ObservablePoint', 'Rectangle', 'Matrix', 'Transform',
+  'WebGLRenderer', 'CanvasRenderer', 'Promise', 'Error', 'WeakMap', 'WeakSet'
 ]
 
+const SKIP_TYPE_GROUPS = ['Sprite_', 'Window_', 'Scene_', 'Spriteset_']
+
 export function probe(): Probe[] {
-  const found: Probe[] = []
+  const found: Record<ProbeKind, Probe[]> = { number: [], string: [], boolean: [] }
   const seen = new WeakSet<object>()
   let budget = MAX_NODES
 
+  function collect(keys: string[], key: string, value: number | string | boolean): void {
+    const kind = typeof value as ProbeKind
+    const bucket = found[kind]
+
+    if (bucket.length >= MAX_RESULTS[kind]) return
+
+    const full = keys.concat(key)
+    bucket.push({ path: full.join('.'), keys: full, owner: keys.join('.'), key, kind, value })
+  }
+
   function walk(node: unknown, keys: string[], depth: number): void {
-    if (budget <= 0 || found.length >= MAX_RESULTS) return
-    if (!walkable(node) || seen.has(node)) return
+    if (budget <= 0 || !walkable(node) || seen.has(node)) return
 
     seen.add(node)
 
-    for (const [key, value] of entries(node)) {
-      if (budget <= 0 || found.length >= MAX_RESULTS) return
+    // 歩いている最中はゲッターを呼ばない。副作用のあるゲームがある。
+    for (const { key, value } of entries(node, MAX_ARRAY, false)) {
+      if (budget <= 0) return
       budget -= 1
 
-      if (typeof value === 'number' && Number.isFinite(value)) {
-        const full = keys.concat(key)
-        found.push({ path: full.join('.'), keys: full, owner: keys.join('.'), key, value })
+      if (keepable(value)) {
+        collect(keys, key, value as number | string | boolean)
         continue
       }
 
@@ -99,7 +138,7 @@ export function probe(): Probe[] {
     walk(read(root, name), [name], 0)
   }
 
-  return found
+  return found.number.concat(found.string, found.boolean)
 }
 
 export function readProbe(keys: string[]): unknown {
@@ -113,10 +152,15 @@ export function writeProbe(keys: string[], value: unknown): boolean {
   if (owner === null || typeof owner !== 'object' || key === undefined) return false
 
   try {
+    if (owner instanceof Map) {
+      owner.set(key, value)
+      return owner.get(key) === value
+    }
+
     ;(owner as Record<string, unknown>)[key] = value
-    return typeof value === 'number' || typeof value === 'boolean'
-      ? (owner as Record<string, unknown>)[key] === value
-      : true
+
+    // 書けたつもりで弾かれていることがある。読み直して確かめる。
+    return typeof value === 'object' || (owner as Record<string, unknown>)[key] === value
   } catch {
     return false
   }
@@ -128,41 +172,47 @@ export function describe(keys: string[]): Structure | null {
 
   if (node === null || typeof node !== 'object') return null
 
+  // ここは利用者が意図して覗いている一つのオブジェクトなので、ゲッターも読む。
+  const all = entries(node, MAX_FIELDS + 1, true)
+  const shown = all.slice(0, MAX_FIELDS)
+
   return {
     path: keys.join('.'),
     type: typeName(node),
-    fields: entries(node, MAX_FIELDS).map(([key, value]) => fieldOf(key, value))
+    fields: shown.map((entry) => fieldOf(entry.key, entry.value, entry)),
+    hidden: all.length > MAX_FIELDS ? Math.max(0, count(node) - MAX_FIELDS) : 0
   }
 }
 
 /** 一つの値を、型と編集可否つきの見出しにする。保存した値の一覧でも使う。 */
-export function fieldOf(key: string, value: unknown): Field {
-  if (value === null || value === undefined) {
-    return { key, kind: 'empty', text: String(value), value, editable: false, size: 0 }
+export function fieldOf(key: string, value: unknown, flags: Partial<Entry> = {}): Field {
+  const field = (kind: FieldKind, text: string, writable: boolean, size = 0): Field => {
+    const editable = writable && !flags.readOnly
+    return flags.accessor ? { key, kind, text, value, editable, size, accessor: true } : { key, kind, text, value, editable, size }
   }
 
-  if (typeof value === 'number') {
-    return { key, kind: 'number', text: String(value), value, editable: true, size: 0 }
-  }
+  if (value === null || value === undefined) return field('empty', String(value), false)
+  if (typeof value === 'number') return field('number', String(value), true)
+  if (typeof value === 'boolean') return field('boolean', String(value), true)
+  if (typeof value === 'string') return field('string', cut(value), true, value.length)
+  if (Array.isArray(value)) return field('array', `[${value.length}]`, false, value.length)
 
-  if (typeof value === 'boolean') {
-    return { key, kind: 'boolean', text: String(value), value, editable: true, size: 0 }
-  }
-
-  if (typeof value === 'string') {
-    return { key, kind: 'string', text: cut(value), value, editable: true, size: value.length }
-  }
-
-  if (Array.isArray(value)) {
-    return { key, kind: 'array', text: `[${value.length}]`, value, editable: false, size: value.length }
-  }
+  if (value instanceof Map) return field('map', `Map {${value.size}}`, false, value.size)
+  if (value instanceof Set) return field('set', `Set {${value.size}}`, false, value.size)
 
   if (typeof value === 'object') {
-    const size = entries(value).length
-    return { key, kind: 'object', text: `${typeName(value)} {${size}}`, value, editable: false, size }
+    const size = count(value)
+    return field('object', `${typeName(value)} {${size}}`, false, size)
   }
 
-  return { key, kind: 'other', text: typeof value, value, editable: false, size: 0 }
+  return field('other', typeof value, false)
+}
+
+function keepable(value: unknown): boolean {
+  if (typeof value === 'number') return Number.isFinite(value)
+  if (typeof value === 'boolean') return true
+
+  return typeof value === 'string' && value !== '' && value.length <= STRING_CAP
 }
 
 function resolve(keys: string[]): unknown {
@@ -177,42 +227,136 @@ function resolve(keys: string[]): unknown {
 }
 
 /** getter が投げるゲームがある。読めない値は無いものとして扱う。 */
-function read(node: Record<string, unknown> | object, key: string): unknown {
+function read(node: object, key: string): unknown {
   try {
+    if (node instanceof Map) return node.get(key)
     return (node as Record<string, unknown>)[key]
   } catch {
     return undefined
   }
 }
 
-function entries(node: object, limit = MAX_ARRAY): [string, unknown][] {
-  const keys = Array.isArray(node)
-    ? node.slice(0, limit).map((_, index) => String(index))
-    : own(node).slice(0, MAX_FIELDS)
+/**
+ * 中身の一覧。列挙できない自前のプロパティも拾うため Object.keys では足りない。
+ * accessors が false のあいだはゲッターを呼ばず、名前だけ飛ばす。
+ */
+function entries(node: object, limit: number, accessors: boolean): Entry[] {
+  if (node instanceof Map) {
+    const out: Entry[] = []
 
-  return keys.map((key) => [key, read(node, key)])
+    for (const key of node.keys()) {
+      if (out.length >= limit) break
+      if (typeof key === 'string') out.push({ key, value: node.get(key) })
+    }
+
+    return out
+  }
+
+  if (node instanceof Set) return []
+
+  if (Array.isArray(node)) {
+    if (node.length > HUGE_ARRAY) return []
+
+    return node.slice(0, limit).map((value, index) => ({ key: String(index), value }))
+  }
+
+  const out: Entry[] = []
+  const taken: Record<string, true> = {}
+
+  for (const key of names(node)) {
+    if (out.length >= limit) break
+
+    const descriptor = describeProperty(node, key)
+    if (!descriptor) continue
+
+    taken[key] = true
+
+    if ('value' in descriptor) {
+      out.push({ key, value: descriptor.value })
+      continue
+    }
+
+    if (accessors && typeof descriptor.get === 'function') out.push(accessor(node, key, descriptor))
+  }
+
+  // クラスで書かれたプラグインは hp のような値をプロトタイプのゲッターに置く。
+  // 自前のプロパティだけ見ていると、その値が一覧に出てこない。
+  if (accessors) out.push(...inherited(node, taken, limit - out.length))
+
+  return out
 }
 
-function own(node: object): string[] {
+function accessor(node: object, key: string, descriptor: PropertyDescriptor): Entry {
+  const entry: Entry = { key, value: read(node, key), accessor: true }
+
+  if (typeof descriptor.set !== 'function') entry.readOnly = true
+
+  return entry
+}
+
+/** プロトタイプ側のゲッターだけを拾う。メソッドは値ではないので見ない。 */
+function inherited(node: object, taken: Record<string, true>, room: number): Entry[] {
+  const out: Entry[] = []
+  let proto: unknown = Object.getPrototypeOf(node)
+
+  while (proto !== null && proto !== Object.prototype && out.length < room) {
+    for (const key of names(proto as object)) {
+      if (out.length >= room) break
+      if (key === 'constructor' || taken[key]) continue
+
+      const descriptor = describeProperty(proto as object, key)
+      if (!descriptor || typeof descriptor.get !== 'function') continue
+
+      taken[key] = true
+      out.push(accessor(node, key, descriptor))
+    }
+
+    proto = Object.getPrototypeOf(proto as object)
+  }
+
+  return out
+}
+
+function names(node: object): string[] {
   try {
-    return Object.keys(node)
+    return Object.getOwnPropertyNames(node)
   } catch {
     return []
   }
 }
 
+function describeProperty(node: object, key: string): PropertyDescriptor | undefined {
+  try {
+    return Object.getOwnPropertyDescriptor(node, key)
+  } catch {
+    return undefined
+  }
+}
+
+function count(node: object): number {
+  if (node instanceof Map || node instanceof Set) return node.size
+  if (Array.isArray(node)) return node.length
+
+  return names(node).length
+}
+
 function walkable(value: unknown): value is object {
   if (value === null || typeof value !== 'object') return false
   if (ArrayBuffer.isView(value) || value instanceof ArrayBuffer) return false
+  if (value instanceof Set) return false
 
   const node = value as Record<string, unknown>
 
   if (typeof node.nodeType === 'number') return false
   if (node.window === value || node.self === value) return false
 
-  const name = typeName(value)
+  return !skippedType(typeName(value))
+}
 
-  return !SKIP_TYPES.some((prefix) => name.indexOf(prefix) === 0)
+function skippedType(name: string): boolean {
+  if (SKIP_TYPES.indexOf(name) >= 0) return true
+
+  return SKIP_TYPE_GROUPS.some((group) => name.indexOf(group) === 0 && name.length > group.length)
 }
 
 function typeName(value: object): string {
