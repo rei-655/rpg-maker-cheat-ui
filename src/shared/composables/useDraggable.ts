@@ -3,8 +3,11 @@ import type { Geometry } from '@/stores/session'
 
 type Mode = 'move' | 'resize'
 
-/** タイトルバーで移動、右下でリサイズ。 */
-export function useDraggable(get: () => Geometry, set: (value: Geometry) => void) {
+/**
+ * タイトルバーで移動、右下でリサイズ。
+ * set はマウスが動くたびに呼ばれる。保存のような重い処理は離したときの done に回す。
+ */
+export function useDraggable(get: () => Geometry, set: (value: Geometry) => void, done?: () => void) {
   const drag = ref<{ mode: Mode; x: number; y: number; origin: Geometry } | null>(null)
 
   function begin(mode: Mode, event: MouseEvent): void {
@@ -32,6 +35,8 @@ export function useDraggable(get: () => Geometry, set: (value: Geometry) => void
   }
 
   function end(): void {
+    if (drag.value) done?.()
+
     drag.value = null
     removeEventListener('mousemove', onMove)
     removeEventListener('mouseup', end)

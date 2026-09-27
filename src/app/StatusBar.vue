@@ -3,6 +3,7 @@ import { onBeforeUnmount, onMounted, reactive } from 'vue'
 import { wallet } from '@/engine/cheats'
 import { currentMapId, has, partyMembers, player } from '@/engine/globals'
 import { mapName } from '@/engine/maps'
+import { guarded } from '@/engine/safety'
 import { watcher } from '@/features/unstuck/watcher'
 import { t } from '@/i18n'
 
@@ -10,9 +11,12 @@ const state = reactive({ gold: 0, party: 0, map: '', x: 0, y: 0, recording: fals
 
 let timer: ReturnType<typeof setInterval> | undefined
 
+// タイマーから投げるとツクールのエラー画面になる
+const tick = guarded('reading the status bar', read)
+
 onMounted(() => {
-  read()
-  timer = setInterval(read, 1000)
+  tick()
+  timer = setInterval(tick, 1000)
 })
 
 onBeforeUnmount(() => clearInterval(timer))

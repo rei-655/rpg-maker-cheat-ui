@@ -9,6 +9,14 @@ const DISPLAY: Record<string, string> = {
   meta: 'Meta'
 }
 
+/** キー割り当てを受け付けている要素の印。ここで押されたキーはショートカットとして扱わない。 */
+export const KEY_CAPTURE_ATTR = 'data-key-capture'
+
+export function isCapturingKeys(event: Event): boolean {
+  const target = event.target
+  return target instanceof Element && target.closest(`[${KEY_CAPTURE_ATTR}]`) !== null
+}
+
 /** 割り当ては `ctrl+shift+KeyC` 形式。修飾キー順 + レイアウト非依存の code。 */
 export function comboFrom(event: KeyboardEvent): string {
   if (isModifierKey(event.code)) return ''

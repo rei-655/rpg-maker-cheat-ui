@@ -1,5 +1,6 @@
 import { isMV } from './engine'
 import { root } from './root'
+import { safely } from './safety'
 
 export const HOST_ID = 'cheat-ui-root'
 
@@ -57,8 +58,12 @@ function guard(owner: Wrappable, method: string): void {
   const original = owner[method]
   if (typeof original !== 'function') return
 
+  const isKey = method.startsWith('_onKey')
+
   owner[method] = function wrapped(this: unknown, event: Event) {
-    if (isInsideUi(event) || (method.startsWith('_onKey') && isTypingInUi())) return
+    // 判定が投げたらゲームに渡す。入力が消えるより、窓の裏に届くほうがまし。
+    const blocked = safely(`routing ${method}`, () => isInsideUi(event) || (isKey && isTypingInUi()))
+    if (blocked) return
 
     return (original as Handler).call(this, event)
   }
@@ -71,16 +76,21 @@ function guardWheel(touch: Wrappable): void {
   if (typeof original !== 'function') return
 
   touch._onWheel = function wrapped(this: Wrappable, event: WheelEvent) {
-    if (isInsideUi(event)) return
+    const handled = safely('routing the wheel', () => {
+      if (isInsideUi(event)) return true
 
-    const state = (isMV() ? this._events : this._newState) as
-      | { wheelX: number; wheelY: number }
-      | undefined
+      const state = (isMV() ? this._events : this._newState) as
+        | { wheelX: number; wheelY: number }
+        | undefined
 
-    if (!state) return (original as Handler).call(this, event)
+      if (!state) return false
 
-    state.wheelX += event.deltaX
-    state.wheelY += event.deltaY
-    event.preventDefault()
+      state.wheelX += event.deltaX
+      state.wheelY += event.deltaY
+      event.preventDefault()
+      return true
+    })
+
+    if (!handled) return (original as Handler).call(this, event)
   }
 }

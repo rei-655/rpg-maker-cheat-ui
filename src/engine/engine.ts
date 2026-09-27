@@ -27,14 +27,39 @@ export function settingsDir(): string {
 
 /** index.html があるフォルダ。取れなければ作業ディレクトリに任せる。 */
 function pageDir(): string | null {
-  const path = String((root.location as Location | undefined)?.pathname ?? '')
+  const location = root.location as Location | undefined
 
-  if (path === '' || path === '/') return null
+  return dirOfPage(String(location?.protocol ?? ''), String(location?.pathname ?? ''))
+}
 
-  const dir = decodeURIComponent(path).replace(/\/[^/]*$/, '')
+/**
+ * ページの URL からフォルダを出す。
+ *
+ * NW.js はアプリを chrome-extension://<id>/www/index.html で開く。このパスは
+ * アプリの根（作業ディレクトリ）からの相対で、ドライブの根ではない。そのまま
+ * 使うと MV の設定が G:/www/cheat-settings に行ってしまう。
+ */
+export function dirOfPage(protocol: string, pathname: string): string | null {
+  if (pathname === '' || pathname === '/') return null
+
+  const dir = decodePath(pathname).replace(/\/[^/]*$/, '')
+
+  if (protocol === 'chrome-extension:') return dir ? `.${dir}` : null
 
   // file:///G:/game/src/index.html では先頭のスラッシュがドライブ文字の前に残る
   return dir.replace(/^\/([A-Za-z]:)/, '$1') || null
+}
+
+/**
+ * 生の % を含むパスで decodeURIComponent は投げる。設定の場所はバンドルの
+ * 読み込み時に決まるので、ここで投げると起動の境界より前でゲームが落ちる。
+ */
+function decodePath(path: string): string {
+  try {
+    return decodeURIComponent(path)
+  } catch {
+    return path
+  }
 }
 
 export function settingsFile(name: string): string {

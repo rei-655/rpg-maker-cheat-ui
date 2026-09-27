@@ -133,6 +133,34 @@ console.log()
 
 const actions = []
 
+// 何か書く前に、書けるかどうかをすべて確かめる。tools/install.ps1 と同じ順序。
+// 途中で止まると、アセットだけ入って登録の無い中途半端な導入が残る。
+const cheatSource = join(PROJECT_ROOT, 'dist')
+
+if (!existsSync(join(cheatSource, 'cheat-ui.js'))) {
+    console.error(`no build output at ${cheatSource}`)
+    console.error('run npm install && npm run build first')
+    process.exit(1)
+}
+
+const pluginsJsPath = join(layout.contentRoot, 'js', 'plugins.js')
+
+if (!existsSync(pluginsJsPath)) {
+    console.error(`missing ${pluginsJsPath} — cannot register the plugin`)
+    process.exit(1)
+}
+
+const pluginsJs = readFileSync(pluginsJsPath, 'utf-8')
+// PowerShell の -match と同じく大文字小文字を区別しない。ずれると片方だけ二重登録になる。
+const registered = new RegExp(`"${PLUGIN_NAME}"`, 'i').test(pluginsJs)
+
+// 先に最終形を作り、検証してから 1 度だけ書く。
+const withEntry = registered ? replacePluginEntry(pluginsJs) : withPluginEntry(pluginsJs)
+// 行き先の無いチートランチャーが同梱されていることがある。
+const launcher = disableBrokenLaunchers(withEntry, layout.contentRoot)
+
+assertPluginsJs(launcher.text)
+
 function backup (path) {
     if (!existsSync(path)) {
         return null
@@ -176,7 +204,7 @@ if (existsSync(cheatTarget)) {
 }
 
 if (!dryRun) {
-    cpSync(join(PROJECT_ROOT, 'dist'), cheatTarget, {recursive: true})
+    cpSync(cheatSource, cheatTarget, {recursive: true})
 }
 
 // プラグイン本体
@@ -221,11 +249,16 @@ function pluginEntryJson () {
 
 /** 更新時は自分の項目を丸ごと書き直し、古いパラメータを残さない。 */
 function replacePluginEntry (text) {
-    return text.split('\n').map(line => {
-        if (!line.includes(`"name":"${PLUGIN_NAME}"`)) return line
+    // tools/install.ps1 の Set-PluginEntry と同じ判定。空白を許し、最初の 1 行だけ直す。
+    const ownEntry = new RegExp(`"name"\\s*:\\s*"${PLUGIN_NAME}"`, 'i')
+    const lines = text.split('\n')
+    const index = lines.findIndex(line => ownEntry.test(line))
 
-        return pluginEntryJson() + (line.trimEnd().endsWith(',') ? ',' : '')
-    }).join('\n')
+    if (index < 0) return text
+
+    const trailing = lines[index].trimEnd().endsWith(',') ? ',' : ''
+
+    return lines.map((line, i) => (i === index ? pluginEntryJson() + trailing : line)).join('\n')
 }
 
 /**
@@ -264,24 +297,6 @@ function assertPluginsJs (text) {
         process.exit(1)
     }
 }
-
-const pluginsJsPath = join(layout.contentRoot, 'js', 'plugins.js')
-
-if (!existsSync(pluginsJsPath)) {
-    console.error(`missing ${pluginsJsPath} — cannot register the plugin`)
-    process.exit(1)
-}
-
-const pluginsJs = readFileSync(pluginsJsPath, 'utf-8')
-const registered = pluginsJs.includes(`"${PLUGIN_NAME}"`)
-
-// 先に最終形を作り、検証してから 1 度だけ書く。
-// 書けない内容だったときに中途半端な登録を残さないため。
-const withEntry = registered ? replacePluginEntry(pluginsJs) : withPluginEntry(pluginsJs)
-// 行き先の無いチートランチャーが同梱されていることがある。
-const launcher = disableBrokenLaunchers(withEntry, layout.contentRoot)
-
-assertPluginsJs(launcher.text)
 
 if (launcher.text === pluginsJs) {
     actions.push(`skip     ${pluginsJsPath} (unchanged)`)

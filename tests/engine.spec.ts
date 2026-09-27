@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { settingsDir, settingsFile } from '@/engine/engine'
+import { dirOfPage, settingsDir, settingsFile } from '@/engine/engine'
 
 /** jsdom では pathname を history から動かせる。実機のページ位置を真似る。 */
 function atPage(path: string): void {
@@ -42,6 +42,16 @@ describe('where settings are written', () => {
 
   it('falls back to the working directory when the page tells us nothing', () => {
     expect(settingsDir()).toBe('./cheat-settings')
+  })
+
+  it('keeps an NW.js app path relative to the app, not the drive root', () => {
+    // NW.js は chrome-extension://<id>/www/index.html で開く
+    expect(dirOfPage('chrome-extension:', '/www/index.html')).toBe('./www')
+    expect(dirOfPage('chrome-extension:', '/index.html')).toBeNull()
+  })
+
+  it('survives a raw percent sign in the path', () => {
+    expect(dirOfPage('file:', '/G:/games/50%off/www/index.html')).toBe('G:/games/50%off/www')
   })
 
   it('names files inside that folder', () => {

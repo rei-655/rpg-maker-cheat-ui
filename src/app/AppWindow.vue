@@ -20,9 +20,11 @@ const closeHint = computed(() => {
   return combo ? t('window.closeHint', { key: formatCombo(combo) }) : ''
 })
 
+// 動かしている間は画面だけ追従させ、保存は離したときに 1 回
 const { startMove, startResize } = useDraggable(
   () => geometry.value,
-  (value) => session.setGeometry(value)
+  (value) => session.setGeometry(value, false),
+  () => session.setGeometry(geometry.value)
 )
 
 onMounted(() => {

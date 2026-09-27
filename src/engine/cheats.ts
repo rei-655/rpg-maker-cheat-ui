@@ -1,5 +1,6 @@
 import { asPromise } from './engine'
 import { has, inBattle, party, player, rpg, troop } from './globals'
+import { guarded } from './safety'
 import type { Actor, Battler } from './types'
 
 export const MAX_GOLD = 99999999
@@ -134,12 +135,36 @@ export const godMode = (() => {
   const patched = new Map<Actor, () => void>()
   let timer: ReturnType<typeof setInterval> | null = null
 
+  /**
+   * セーブを読み込むとアクターは作り直される。画面は新しいアクターを「オフ」と
+   * 表示するので、古いほうを抱えて回復し続けるのは画面と食い違ったうえで漏れる。
+   */
+  function isCurrent(actor: Actor): boolean {
+    if (!has('$gameActors')) return true
+    return rpg('$gameActors').actor(actor._actorId) === actor
+  }
+
+  function stop(): void {
+    if (patched.size > 0 || !timer) return
+
+    clearInterval(timer)
+    timer = null
+  }
+
   function tick(): void {
-    for (const actor of patched.keys()) {
+    for (const [actor, restore] of patched) {
+      if (!isCurrent(actor)) {
+        restore()
+        patched.delete(actor)
+        continue
+      }
+
       actor.gainHp(actor.mhp)
       actor.gainMp(actor.mmp)
       actor.gainTp(actor.maxTp())
     }
+
+    stop()
   }
 
   return {
@@ -149,19 +174,15 @@ export const godMode = (() => {
       if (patched.has(actor)) {
         patched.get(actor)?.()
         patched.delete(actor)
-
-        if (patched.size === 0 && timer) {
-          clearInterval(timer)
-          timer = null
-        }
+        stop()
 
         return false
       }
 
       patched.set(actor, patchActor(actor))
 
-      // アクターごとではなく 1 本のタイマーを共有する
-      timer ??= setInterval(tick, 1000)
+      // アクターごとではなく 1 本のタイマーを共有する。タイマーから投げるとゲームが止まる。
+      timer ??= setInterval(guarded('keeping god mode', tick), 1000)
       return true
     }
   }

@@ -90,9 +90,10 @@ export const useSession = defineStore('session', {
       }
     },
 
-    setGeometry(geometry: Geometry) {
+    /** persist を切るとファイルに書かない。ドラッグ中は mousemove ごとに呼ばれる。 */
+    setGeometry(geometry: Geometry, persist = true) {
       this.geometry = this.fitToScreen(geometry)
-      settings.set('geometry', this.geometry)
+      if (persist) settings.set('geometry', this.geometry)
     },
 
     resetGeometry() {

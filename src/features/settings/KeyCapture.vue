@@ -31,6 +31,7 @@ function onKeydown(event: KeyboardEvent): void {
 
 <template>
   <button
+    data-key-capture
     class="keycap"
     :class="{ 'keycap--empty': !combo, 'keycap--capturing': capturing }"
     :title="t('keys.captureHint')"

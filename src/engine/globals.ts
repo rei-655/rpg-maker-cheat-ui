@@ -25,6 +25,7 @@ interface RpgGlobals {
   $dataMapInfos: (DataMapInfo | null)[]
   $gameVariables: NumberStore
   $gameSwitches: BooleanStore
+  $gameActors: { actor(id: number): Actor | null }
   $gameParty: Party
   $gameTroop: Troop
   $gamePlayer: Player
