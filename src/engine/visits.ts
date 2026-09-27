@@ -1,6 +1,7 @@
 import { JsonStore } from './storage'
 import { currentMapId, has, player } from './globals'
 import { root } from './root'
+import { guarded, safely } from './safety'
 
 export interface Visit {
   mapId: number
@@ -51,11 +52,15 @@ export function installVisitLog(): void {
 
   if (typeof setup !== 'function') return
 
+  const record = guarded('recording the map you entered', () => remember(currentMapId()))
+
   gameMap!.prototype.setup = function (this: unknown, ...args: unknown[]) {
+    // ゲームの処理が先。こちらが何をしようと、まず本来の setup は通す。
     const result = (setup as (...a: unknown[]) => unknown).apply(this, args)
 
     // 座標が入るのは転送のあとなので、次のフレームで拾う
-    setTimeout(() => remember(currentMapId()), 0)
+    safely('scheduling the map record', () => setTimeout(record, 0))
+
     return result
   }
 }

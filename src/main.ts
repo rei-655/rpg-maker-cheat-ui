@@ -4,6 +4,7 @@ import App from './App.vue'
 import { HOST_ID, installInputGuards } from './engine/input'
 import { installMessageSkip } from './engine/messages'
 import { installVisitLog } from './engine/visits'
+import { safely } from './engine/safety'
 import './shared/styles/base.css'
 
 declare global {
@@ -24,15 +25,23 @@ function mount(): void {
   host.id = HOST_ID
   document.body.appendChild(host)
 
-  installInputGuards()
-  installMessageSkip()
-  installVisitLog()
+  // 取り付けは一つずつ包む。一つ転んでも残りとゲームは動く。
+  safely('installing the input guards', installInputGuards)
+  safely('installing the message skip', installMessageSkip)
+  safely('installing the visit log', installVisitLog)
 
-  createApp(App).use(createPinia()).mount(host)
+  const app = safely('starting the overlay', () => createApp(App).use(createPinia()).mount(host))
+
+  // 起動に失敗したら痕跡を残さない。空の枠がゲームの上に残るほうが困る。
+  if (!app) host.remove()
+}
+
+function start(): void {
+  safely('mounting the overlay', mount)
 }
 
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', mount, { once: true })
+  document.addEventListener('DOMContentLoaded', start, { once: true })
 } else {
-  mount()
+  start()
 }

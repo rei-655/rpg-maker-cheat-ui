@@ -38,6 +38,13 @@ describe('the bundle runs on the oldest engine we support', () => {
     }
   })
 
+  it('spreads objects natively, instead of through a helper that needs a built-in', () => {
+    // es2017 まで落とすとオブジェクト展開が Object.prototype.hasOwnProperty を
+    // 使うヘルパになる。その組み込みが壊れているゲームがあり、起動で落ちた。
+    expect(BUNDLE).not.toContain('Object.getOwnPropertyDescriptors')
+    expect(BUNDLE).toMatch(/\{\s*\.\.\./)
+  })
+
   it('has the loader define globalThis before the bundle loads', () => {
     expect(LOADER).toMatch(/typeof window\.globalThis === 'undefined'/)
     expect(LOADER.indexOf('window.globalThis = window')).toBeLessThan(LOADER.indexOf('script.src'))

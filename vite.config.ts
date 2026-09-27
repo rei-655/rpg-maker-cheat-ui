@@ -9,7 +9,11 @@ export default defineConfig({
   },
   build: {
     // MV 1.6 は NW.js 0.29（Chromium 66）を同梱する。それより古い MV もある。
-    target: 'es2017',
+    //
+    // es2017 まで落とすとオブジェクト展開が Object.prototype.hasOwnProperty を
+    // 使うヘルパに置き換わる。実機にはその組み込みが壊れているゲームがあり、
+    // 起動しただけで落ちた。展開は Chromium 60 からあるので落とす必要がない。
+    target: 'es2018',
     outDir: 'dist',
     emptyOutDir: true,
     cssCodeSplit: false,
