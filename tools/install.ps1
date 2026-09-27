@@ -54,25 +54,70 @@ function Get-GameLayout ([string]$contentRoot) {
     return $null
 }
 
+# NW.js をやめて Electron で包み直した配布物がある。中身は resources/app/ の下。
+$CONTENT_SUBDIRS = @(
+    '',
+    'www',
+    'resources\app\src',
+    'resources\app\www',
+    'resources\app',
+    'app\src',
+    'app\www'
+)
+
+# 中身が多いフォルダは降りない。素材の中にゲームはない。
+$BULK_DIRS = @(
+    'img', 'audio', 'movies', 'fonts', 'effects', 'icon', 'save', 'locales',
+    'node_modules', 'swiftshader', 'data', 'js', 'css', 'live2d', 'live2D',
+    $ASSET_DIR, 'cheat-ui-setup'
+)
+
+function Find-LayoutIn ([string]$root) {
+    foreach ($subdir in $CONTENT_SUBDIRS) {
+        $candidate = if ($subdir -eq '') { $root } else { Join-Path $root $subdir }
+        $layout = Get-GameLayout $candidate
+        if ($layout) { return $layout }
+    }
+    return $null
+}
+
+# 決まった場所になければ浅く探す。深追いはしない。
+function Search-Layout ([string]$dir, [int]$depth) {
+    if ($depth -le 0) { return $null }
+
+    $children = @()
+    try { $children = Get-ChildItem -LiteralPath $dir -Directory -ErrorAction Stop } catch { return $null }
+
+    foreach ($child in $children) {
+        if ($BULK_DIRS -contains $child.Name) { continue }
+
+        $layout = Get-GameLayout $child.FullName
+        if (-not $layout) { $layout = Search-Layout $child.FullName ($depth - 1) }
+        if ($layout) { return $layout }
+    }
+    return $null
+}
+
 # ゲーム内のどのパスでも受け付ける。フォルダ / Game.exe / index.html / www など。
 function Resolve-GameLayout ([string]$path) {
     if ([string]::IsNullOrWhiteSpace($path)) { return $null }
     if (-not (Test-Path -LiteralPath $path)) { return $null }
 
     $item    = Get-Item -LiteralPath $path
-    $current = if ($item.PSIsContainer) { $item.FullName } else { $item.DirectoryName }
+    $start   = if ($item.PSIsContainer) { $item.FullName } else { $item.DirectoryName }
+    $current = $start
 
     for ($depth = 0; $depth -lt 4; $depth++) {
-        foreach ($candidate in @($current, (Join-Path $current 'www'))) {
-            $layout = Get-GameLayout $candidate
-            if ($layout) { return $layout }
-        }
+        $layout = Find-LayoutIn $current
+        if ($layout) { return $layout }
 
         $parent = Split-Path -Parent $current
         if ([string]::IsNullOrEmpty($parent) -or $parent -eq $current) { break }
         $current = $parent
     }
-    return $null
+
+    # どの決まった場所にも無かった。落とされたフォルダの下を浅く探す。
+    return Search-Layout $start 3
 }
 
 # ゲームフォルダ内に展開されていれば、尋ねる必要はない。

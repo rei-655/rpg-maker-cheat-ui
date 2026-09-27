@@ -9,7 +9,7 @@
  * js/main.js には一切触れない。
  */
 import {
-    cpSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync, copyFileSync, rmSync
+    cpSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync, copyFileSync, rmSync
 } from 'node:fs'
 import {fileURLToPath} from 'node:url'
 import {dirname, join, resolve} from 'node:path'
@@ -44,31 +44,70 @@ function isInside (child, parent) {
     return c.toLowerCase().startsWith(p.toLowerCase())
 }
 
-/** MV は www/ 配下、MZ はプロジェクト直下。 */
+/**
+ * ゲーム本体がどこにあるか。
+ *
+ * MV は www/ 配下、MZ は直下。ただし NW.js をやめて Electron で包み直した
+ * 配布物があり、その場合は resources/app/ の下に丸ごと入っている。
+ */
+const CONTENT_SUBDIRS = [
+    '',
+    'www',
+    join('resources', 'app', 'src'),
+    join('resources', 'app', 'www'),
+    join('resources', 'app'),
+    join('app', 'src'),
+    join('app', 'www')
+]
+
+/** 中身が多いフォルダは降りない。素材の中にゲームはない。 */
+const BULK = new Set([
+    'img', 'audio', 'movies', 'fonts', 'effects', 'icon', 'save', 'locales',
+    'node_modules', 'swiftshader', 'data', 'js', 'css', 'live2d', 'live2D',
+    ASSET_DIR, 'cheat-ui-setup'
+])
+
+function readLayout (contentRoot) {
+    const js = join(contentRoot, 'js')
+
+    if (!existsSync(join(contentRoot, 'index.html')) || !existsSync(js)) return null
+
+    const isMz = existsSync(join(js, 'rmmz_core.js'))
+    const isMv = existsSync(join(js, 'rpg_core.js'))
+
+    if (!isMz && !isMv) return null
+
+    return {engine: isMz ? 'MZ' : 'MV', contentRoot}
+}
+
 function detectLayout (root) {
-    const candidates = [
-        {engine: 'MV', contentRoot: join(root, 'www')},
-        {engine: 'MZ', contentRoot: root}
-    ]
+    for (const subdir of CONTENT_SUBDIRS) {
+        const layout = readLayout(subdir ? join(root, subdir) : root)
+        if (layout) return layout
+    }
 
-    for (const candidate of candidates) {
-        const js = join(candidate.contentRoot, 'js')
+    return searchLayout(root, 3)
+}
 
-        if (!existsSync(join(candidate.contentRoot, 'index.html')) || !existsSync(js)) {
-            continue
-        }
+/** 決まった場所になければ浅く探す。深追いはしない。 */
+function searchLayout (dir, depth) {
+    if (depth <= 0) return null
 
-        const isMz = existsSync(join(js, 'rmmz_core.js'))
-        const isMv = existsSync(join(js, 'rpg_core.js'))
+    let children = []
 
-        if (!isMz && !isMv) {
-            continue
-        }
+    try {
+        children = readdirSync(dir, {withFileTypes: true})
+    } catch {
+        return null
+    }
 
-        return {
-            engine: isMz ? 'MZ' : 'MV',
-            contentRoot: candidate.contentRoot
-        }
+    for (const child of children) {
+        if (!child.isDirectory() || BULK.has(child.name)) continue
+
+        const here = join(dir, child.name)
+        const layout = readLayout(here) ?? searchLayout(here, depth - 1)
+
+        if (layout) return layout
     }
 
     return null
@@ -79,6 +118,9 @@ const layout = detectLayout(gameRoot)
 if (!layout) {
     console.error(`could not find an RPG Maker MV/MZ game in ${gameRoot}`)
     console.error('expected index.html plus js/rmmz_core.js (MZ) or js/rpg_core.js (MV)')
+    if (existsSync(join(gameRoot, 'resources', 'app.asar'))) {
+        console.error('the game is packed into resources/app.asar - unpack it first')
+    }
     process.exit(1)
 }
 

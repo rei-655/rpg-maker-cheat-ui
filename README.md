@@ -23,6 +23,12 @@ that ships with Windows.
 | Unzip this project inside the game folder, then double-click `install.bat` | finds the game around it and installs |
 | Just double-click `install.bat` | opens a file picker — choose `Game.exe` or `index.html` |
 
+The installer finds the engine itself: MV under `www/`, MZ at the top, and games
+repackaged with Electron instead of NW.js, where the whole game sits under
+`resources/app/`. Failing those it looks a little way down. If a game is sealed
+inside `resources/app.asar` it says so — unpack that first. Settings and saved
+values are written next to the game's `index.html`, wherever that turns out to be.
+
 No paths to type. `uninstall.bat` works the same way.
 
 Default shortcut: **Ctrl+C** (rebindable under Settings).
@@ -222,6 +228,12 @@ tests/        vitest; harness/ boots the bundle in a plain browser
 | ゲームフォルダ（または `Game.exe`）を `install.bat` にドラッグ | そのゲームに導入 |
 | このプロジェクトをゲームフォルダ内に展開して `install.bat` をダブルクリック | 周辺からゲームを探して導入 |
 | `install.bat` をダブルクリック | 選択ダイアログが開く。`Game.exe` か `index.html` を選ぶ |
+
+ゲーム本体の場所はインストーラが自分で探す。MV の `www/` 配下、MZ の直下、そして
+NW.js の代わりに Electron で包み直された配布物（本体が `resources/app/` の下にある
+もの）に対応する。見つからなければ少しだけ下も探す。`resources/app.asar` に封入されて
+いる場合はその旨を表示するので、先に展開する。設定と保存した値は、ゲームの
+`index.html` と同じ階層に書く。
 
 パスを手で打つ必要はない。削除は `uninstall.bat` が同じ手順で動く。
 

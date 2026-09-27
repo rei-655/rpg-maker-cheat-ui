@@ -1,4 +1,5 @@
 import { has, rpg } from './globals'
+import { root } from './root'
 import type { EngineName } from './types'
 
 export function engineName(): EngineName {
@@ -11,9 +12,29 @@ export function isNwjs(): boolean {
   return has('Utils') && rpg('Utils').isNwjs()
 }
 
-/** MV は www/ 配下、MZ はプロジェクト直下にゲームデータを置く。 */
+/**
+ * 設定は index.html と同じ階層に置く。
+ *
+ * MV は www/、MZ は直下という区別だけでは足りない。NW.js をやめて Electron で
+ * 包み直した配布物があり、そこでは本体が resources/app/src に入っていて、
+ * 作業ディレクトリもゲームのフォルダとは限らない。ページの位置から決める。
+ */
 export function settingsDir(): string {
-  return `${isMV() ? './www' : '.'}/cheat-settings`
+  const dir = pageDir()
+
+  return dir ? `${dir}/cheat-settings` : './cheat-settings'
+}
+
+/** index.html があるフォルダ。取れなければ作業ディレクトリに任せる。 */
+function pageDir(): string | null {
+  const path = String((root.location as Location | undefined)?.pathname ?? '')
+
+  if (path === '' || path === '/') return null
+
+  const dir = decodeURIComponent(path).replace(/\/[^/]*$/, '')
+
+  // file:///G:/game/src/index.html では先頭のスラッシュがドライブ文字の前に残る
+  return dir.replace(/^\/([A-Za-z]:)/, '$1') || null
 }
 
 export function settingsFile(name: string): string {

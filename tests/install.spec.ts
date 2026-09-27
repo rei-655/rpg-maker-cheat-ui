@@ -47,9 +47,10 @@ interface Game {
   pluginsJs: string
 }
 
-function makeGame({ engine = 'MZ', bom = false } = {}): Game {
+function makeGame({ engine = 'MZ', bom = false, nest = '' } = {}): Game {
   const root = mkdtempSync(join(scratch, 'game-'))
-  const content = engine === 'MV' ? join(root, 'www') : root
+  const inner = nest ? join(root, ...nest.split('/')) : root
+  const content = nest ? inner : engine === 'MV' ? join(root, 'www') : root
   const js = join(content, 'js')
 
   mkdirSync(js, { recursive: true })
@@ -264,3 +265,70 @@ describe.runIf(hasPowerShell)('powershell installer', () => {
     expect(readPlugins(viaPs)).toBe(readPlugins(viaNode))
   })
 })
+
+describe('repackaged games', () => {
+  // NW.js をやめて Electron で包み直した配布物がある。本体は resources/app/src。
+  const layouts = ['resources/app/src', 'resources/app/www', 'resources/app', 'app/src']
+
+  for (const nest of layouts) {
+    it(`finds the game at ${nest}`, () => {
+      const game = makeGame({ engine: 'MV', nest })
+      const output = runNode([game.root])
+
+      expect(output).toContain(game.content)
+      expect(entries(game).map((entry) => entry.name)).toContain('CheatUILoader')
+    })
+  }
+
+  it('puts the assets next to index.html, not at the folder that was dropped', () => {
+    const game = makeGame({ engine: 'MV', nest: 'resources/app/src' })
+    runNode([game.root])
+
+    expect(existsSync(join(game.content, 'cheat-ui', 'cheat-ui.js'))).toBe(true)
+    expect(existsSync(join(game.root, 'cheat-ui', 'cheat-ui.js'))).toBe(false)
+  })
+
+  it('finds a layout nobody listed, by looking a little way down', () => {
+    const game = makeGame({ engine: 'MZ', nest: 'bundle/inner' })
+
+    expect(entries(makeInstalled(game)).map((entry) => entry.name)).toContain('CheatUILoader')
+  })
+
+  it('still refuses a folder that only looks like a game', () => {
+    const root = mkdtempSync(join(scratch, 'notgame-'))
+    mkdirSync(join(root, 'resources', 'app'), { recursive: true })
+    writeFileSync(join(root, 'resources', 'app', 'main.js'), '// electron')
+
+    expect(() => runNode([root])).toThrow()
+  })
+
+  it('says so when the game is sealed inside app.asar', () => {
+    const root = mkdtempSync(join(scratch, 'asar-'))
+    mkdirSync(join(root, 'resources'), { recursive: true })
+    writeFileSync(join(root, 'resources', 'app.asar'), 'packed')
+
+    let message = ''
+    try {
+      runNode([root])
+    } catch (error) {
+      message = String((error as { stderr?: string }).stderr ?? '')
+    }
+
+    expect(message).toContain('app.asar')
+  })
+
+  it('agrees with the powershell installer on a repackaged game', () => {
+    const viaPs = makeGame({ engine: 'MV', nest: 'resources/app/src' })
+    const viaNode = makeGame({ engine: 'MV', nest: 'resources/app/src' })
+
+    runPs(['-GamePath', viaPs.root])
+    runNode([viaNode.root])
+
+    expect(readPlugins(viaPs)).toBe(readPlugins(viaNode))
+  })
+})
+
+function makeInstalled(game: Game): Game {
+  runNode([game.root])
+  return game
+}
