@@ -133,6 +133,9 @@ export default {
   'inventory.empty': 'Nothing matches.',
   'inventory.fillMessage': 'Set all {count} listed entries to their maximum.',
   'inventory.filledToast': 'Filled {count} entries',
+  'inventory.fillIndependent':
+    'These are kept one by one and share a single limit, so they cannot all be filled. Use Max on the one you want.',
+  'inventory.skippedIndependent': 'Skipped {count} kept one by one — they share a single limit.',
 
   'combat.lead': 'Only useful during a battle, except for the encounter switch.',
   'combat.inBattle': 'In a battle now',

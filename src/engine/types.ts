@@ -4,6 +4,8 @@ export interface DataItem {
   id: number
   name: string
   description?: string
+  /** YEP_ItemCore の独立アイテムの複製が、元の項目を指す。 */
+  baseItemId?: number
 }
 
 export interface DataState {

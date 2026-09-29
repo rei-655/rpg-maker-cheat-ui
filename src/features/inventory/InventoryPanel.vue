@@ -4,11 +4,12 @@ import AppIcon from '@/shared/ui/AppIcon.vue'
 import SearchBox from '@/shared/ui/SearchBox.vue'
 import ValueInput from '@/shared/ui/ValueInput.vue'
 import DataTable, { type Column } from '@/shared/ui/DataTable.vue'
-import { party, rpg } from '@/engine/globals'
+import { rpg } from '@/engine/globals'
 import { MAX_GOLD, wallet } from '@/engine/cheats'
+import { databaseEntries, heldCount, heldMax, isIndependent, setHeld } from '@/engine/inventory'
 import type { DataItem } from '@/engine/types'
 import { matches, parseQuery } from '@/shared/lib/query'
-import { clamp, toInt } from '@/shared/lib/coerce'
+import { toInt } from '@/shared/lib/coerce'
 import { confirm } from '@/shared/composables/useConfirm'
 import { toast } from '@/shared/composables/useToast'
 import { useSession } from '@/stores/session'
@@ -66,18 +67,17 @@ function selectTab(key: string): void {
 function refresh(): void {
   const tab = TABS.find((entry) => entry.key === view.tab) ?? TABS[0]
 
-  rows.value = (tab.source() ?? [])
-    .filter((data): data is DataItem => !!data)
-    .map((data) => ({
-      id: data.id,
-      name: data.name || '',
-      desc: data.description ?? '',
-      amount: party().numItems(data),
-      max: party().maxItems(data),
-      data
-    }))
+  // 独立アイテムの複製は元の項目の行にまとめる。出すと持つたびに行が増える。
+  rows.value = databaseEntries(tab.source()).map((data) => ({
+    id: data.id,
+    name: data.name || '',
+    desc: data.description ?? '',
+    amount: heldCount(data),
+    max: heldMax(data),
+    data
+  }))
 
-  for (const entry of TABS) counts[entry.key] = (entry.source() ?? []).filter(Boolean).length
+  for (const entry of TABS) counts[entry.key] = databaseEntries(entry.source()).length
 
   gold.value = wallet.gold()
 }
@@ -88,20 +88,35 @@ function setGold(raw: string | number): void {
   gold.value = wallet.gold()
 }
 
+/** 上限は書く直前に取り直す。独立アイテムは種類全体で空きを分け合う。 */
 function commit(row: Row, raw: string | number): void {
   const requested = toInt(raw)
 
-  if (requested === null) {
-    row.amount = party().numItems(row.data)
-    return
-  }
+  if (requested !== null) row.amount = setHeld(row.data, requested)
+  else row.amount = heldCount(row.data)
 
-  party().gainItem(row.data, clamp(requested, 0, row.max) - party().numItems(row.data))
-  row.amount = party().numItems(row.data)
+  refreshLimits()
+}
+
+function fillToMax(row: Row): void {
+  commit(row, heldMax(row.data))
+}
+
+/** 空きを共有する品目は、1 つ埋めると他の上限も変わる。 */
+function refreshLimits(): void {
+  for (const row of rows.value) row.max = heldMax(row.data)
 }
 
 async function fillAll(): Promise<void> {
-  const targets = [...shown.value]
+  // 独立アイテムは上限を種類全体で共有するので「全部を最大に」が成り立たない。
+  // 先頭の 1 品目が空きを使い切り、残りは作られないか上限を超えて作られる。
+  const targets = shown.value.filter((row) => !isIndependent(row.data))
+  const skipped = shown.value.length - targets.length
+
+  if (targets.length === 0) {
+    toast.warn(t('inventory.fillIndependent'))
+    return
+  }
 
   const ok = await confirm({
     title: t('inventory.fillAll'),
@@ -111,8 +126,10 @@ async function fillAll(): Promise<void> {
 
   if (!ok) return
 
-  targets.forEach((row) => commit(row, row.max))
+  targets.forEach((row) => fillToMax(row))
   toast.success(t('inventory.filledToast', { count: targets.length }))
+
+  if (skipped > 0) toast.info(t('inventory.skippedIndependent', { count: skipped }))
 }
 </script>
 
@@ -184,7 +201,7 @@ async function fillAll(): Promise<void> {
           <div class="row">
             <ValueInput :value="row.amount" :width="72" @commit="commit(row, $event)" />
             <span class="mono faint nowrap">/ {{ row.max }}</span>
-            <button class="btn btn--sm" :title="t('common.max')" @click="commit(row, row.max)">Max</button>
+            <button class="btn btn--sm" :title="t('common.max')" @click="fillToMax(row)">Max</button>
           </div>
         </template>
       </DataTable>

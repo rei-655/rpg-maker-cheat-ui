@@ -135,6 +135,9 @@ const ko: Messages = {
   'inventory.empty': '조건에 맞는 항목이 없습니다.',
   'inventory.fillMessage': '목록의 {count}개를 모두 최대치로 만듭니다.',
   'inventory.filledToast': '{count}개를 최대치로 채웠습니다',
+  'inventory.fillIndependent':
+    '하나씩 따로 보관하는 품목은 상한을 함께 쓰기 때문에 한꺼번에 최대로 채울 수 없습니다. 원하는 품목의 Max 를 눌러 주세요.',
+  'inventory.skippedIndependent': '하나씩 보관하는 {count}개는 상한을 함께 써서 건너뛰었습니다.',
 
   'combat.lead': '인카운터를 제외하면 전투 중에 사용하는 기능입니다.',
   'combat.inBattle': '전투 중',

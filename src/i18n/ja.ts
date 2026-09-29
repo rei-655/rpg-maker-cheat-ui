@@ -135,6 +135,9 @@ const ja: Messages = {
   'inventory.empty': '該当する項目がありません。',
   'inventory.fillMessage': '一覧の {count} 件をすべて最大にします。',
   'inventory.filledToast': '{count} 件を最大にしました',
+  'inventory.fillIndependent':
+    '1 つずつ持つ品目は上限を共有するため、まとめて最大にはできません。欲しいものの Max を押してください。',
+  'inventory.skippedIndependent': '1 つずつ持つ {count} 件は上限を共有するため飛ばしました。',
 
   'combat.lead': 'エンカウント以外は戦闘中に使います。',
   'combat.inBattle': '戦闘中',
